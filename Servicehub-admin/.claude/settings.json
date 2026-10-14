@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -a .)",
+      "Bash(npm -v)"
+    ]
+  }
+}
