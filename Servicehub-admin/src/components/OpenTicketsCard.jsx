@@ -24,14 +24,12 @@ export function OpenTicketsCard({ tickets, isLoading }) {
             </div>
           ))
         ) : tickets.length === 0 ? (
-          <p className="py-6 text-center text-[13px] text-text-secondary">
-            No open tickets — nice work!
-          </p>
+          <p className="py-6 text-center text-[13px] text-text-secondary">No open tickets — nice work!</p>
         ) : (
           tickets.map((ticket) => (
             <Link
               key={ticket._id}
-              to="/support"
+              to={`/support?ticket=${ticket._id}`}
               className="flex items-center gap-3 border-b border-border py-2.5 text-[13px] last:border-0 hover:bg-canvas"
             >
               <span className="font-data w-16 shrink-0 text-text-secondary">{ticket.code}</span>

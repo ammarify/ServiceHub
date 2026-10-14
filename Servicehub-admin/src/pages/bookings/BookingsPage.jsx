@@ -1,11 +1,16 @@
-import { PackageSearch } from "lucide-react";
+import { PackageSearch, Plus } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { DataTable } from "../../components/ui/DataTable";
+import { Pagination } from "../../components/ui/Pagination";
 import { QueryError } from "../../components/ui/QueryError";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { useAuth } from "../../context/AuthContext";
 import { formatDate, formatUSD, formatTime } from "../../lib/formatters";
+import { can } from "../../lib/permissions";
+import { BookingFormDialog } from "./BookingFormDialog";
 import { BookingsToolbar } from "./BookingsToolbar";
 import { useBookingsList } from "./useBookingsList";
 
@@ -20,7 +25,8 @@ const COLUMNS = [
   {
     key: "providerName",
     label: "Provider",
-    render: (booking) => booking.provider?.name ?? "Unassigned",
+    render: (booking) =>
+      booking.provider?.name ?? <span className="text-text-secondary">Unassigned</span>,
   },
   {
     key: "scheduledAt",
@@ -48,14 +54,24 @@ const COLUMNS = [
 
 export function BookingsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const list = useBookingsList();
-
-  const rangeStart = list.totalCount === 0 ? 0 : (list.page - 1) * list.pageSize + 1;
-  const rangeEnd = Math.min(list.page * list.pageSize, list.totalCount);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const canCreate = can(user, "booking.create");
 
   return (
     <div className="flex flex-col gap-4">
-      <BookingsToolbar {...list} />
+      <BookingsToolbar
+        {...list}
+        actions={
+          canCreate && (
+            <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
+              <Plus size={14} />
+              New booking
+            </Button>
+          )
+        }
+      />
 
       <Card padded={false}>
         {list.isError ? (
@@ -73,38 +89,37 @@ export function BookingsPage() {
             emptyState={
               <div className="flex flex-col items-center gap-3">
                 <PackageSearch size={28} className="text-text-secondary" />
-                <p className="text-[13px] text-text-secondary">No bookings match your filters</p>
-                <Button variant="ghost" onClick={list.clearFilters}>
-                  Clear filters
-                </Button>
+                <p className="text-[13px] text-text-secondary">
+                  {list.hasActiveFilters ? "No bookings match your filters" : "No bookings yet"}
+                </p>
+                {list.hasActiveFilters && (
+                  <Button variant="ghost" onClick={list.clearFilters}>
+                    Clear filters
+                  </Button>
+                )}
               </div>
             }
           />
         )}
       </Card>
 
-      {!list.isLoading && !list.isError && list.totalCount > 0 && (
-        <div className="flex items-center justify-between text-[13px] text-text-secondary">
-          <span className="font-data">
-            {rangeStart}–{rangeEnd} of {list.totalCount}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              disabled={list.page <= 1}
-              onClick={() => list.setPage(list.page - 1)}
-            >
-              Prev
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={list.page >= list.totalPages}
-              onClick={() => list.setPage(list.page + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+      {!list.isLoading && !list.isError && (
+        <Pagination
+          page={list.page}
+          pageSize={list.pageSize}
+          total={list.totalCount}
+          totalPages={list.totalPages}
+          onPageChange={list.setPage}
+          label="bookings"
+        />
+      )}
+
+      {canCreate && (
+        <BookingFormDialog
+          open={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          onSaved={(booking) => navigate(`/bookings/${booking._id}`)}
+        />
       )}
     </div>
   );

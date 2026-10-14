@@ -15,7 +15,7 @@ export function Sidebar({ isOpen, onClose }) {
 
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => canViewPath(user.role, item.to)),
+    items: group.items.filter((item) => canViewPath(user, item.to)),
   })).filter((group) => group.items.length > 0);
 
   return (
@@ -42,10 +42,10 @@ export function Sidebar({ isOpen, onClose }) {
         </div>
 
         <div className="border-b border-border p-3 md:hidden lg:block">
-          <SidebarSearch />
+          <SidebarSearch onNavigate={onClose} />
         </div>
 
-        <nav className="flex-1 space-y-4 overflow-y-auto p-3">
+        <nav aria-label="Main" className="flex-1 space-y-4 overflow-y-auto p-3">
           {visibleGroups.map((group) => (
             <div key={group.label}>
               <div className="mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary md:hidden lg:block">
@@ -80,6 +80,7 @@ export function Sidebar({ isOpen, onClose }) {
           <button
             type="button"
             onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
             className="flex w-full items-center gap-2.5 rounded-btn px-2.5 py-2 text-[13px] text-text-secondary transition-colors hover:bg-canvas hover:text-text-primary md:justify-center lg:justify-start"
           >
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
@@ -89,7 +90,7 @@ export function Sidebar({ isOpen, onClose }) {
           </button>
 
           <div className="mt-2">
-            <UserMenu />
+            <UserMenu onNavigate={onClose} />
           </div>
         </div>
       </aside>

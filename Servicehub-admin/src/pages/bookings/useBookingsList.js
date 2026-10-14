@@ -5,15 +5,6 @@ import { useDebouncedValue } from "../../lib/useDebouncedValue";
 const PAGE_SIZE = 12;
 
 export const STATUS_OPTIONS = ["all", "pending", "assigned", "in_progress", "completed", "cancelled"];
-export const SERVICE_OPTIONS = [
-  "all",
-  "AC Repair",
-  "Deep Cleaning",
-  "Plumbing",
-  "Electrical",
-  "Maid Service",
-  "Pest Control",
-];
 
 export function useBookingsList() {
   const [search, setSearchRaw] = useState("");

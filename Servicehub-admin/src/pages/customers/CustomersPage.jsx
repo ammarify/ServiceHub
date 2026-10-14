@@ -1,12 +1,19 @@
-import { UserRoundSearch } from "lucide-react";
+import { Plus, UserRoundSearch } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { DataTable } from "../../components/ui/DataTable";
+import { Pagination } from "../../components/ui/Pagination";
 import { QueryError } from "../../components/ui/QueryError";
+import { useAuth } from "../../context/AuthContext";
 import { formatNumber, formatUSD, relativeTime } from "../../lib/formatters";
+import { can } from "../../lib/permissions";
+import { useQueryParamState } from "../../lib/useQueryParamState";
+import { BookingFormDialog } from "../bookings/BookingFormDialog";
 import { CustomerDrawer } from "./CustomerDrawer";
+import { CustomerFormDialog } from "./CustomerFormDialog";
 import { CustomersToolbar } from "./CustomersToolbar";
 import { useCustomersList } from "./useCustomersList";
 
@@ -51,18 +58,34 @@ const COLUMNS = [
 ];
 
 export function CustomersPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const list = useCustomersList();
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const canManage = can(user, "customer.manage");
+  const canCreateBooking = can(user, "booking.create");
+  // ?customer=<id> opens the drawer (deep links from search, bookings...).
+  const [selectedCustomerId, setSelectedCustomerId] = useQueryParamState("customer");
+  const [drawerCustomerId, setDrawerCustomerId] = useState(selectedCustomerId);
+  const [formState, setFormState] = useState(null);
+  const [bookingFor, setBookingFor] = useState(null);
 
-  function handleRowClick(customer) {
-    setSelectedCustomerId(customer._id);
-    setIsDrawerOpen(true);
+  if (selectedCustomerId && selectedCustomerId !== drawerCustomerId) {
+    setDrawerCustomerId(selectedCustomerId);
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <CustomersToolbar {...list} />
+      <CustomersToolbar
+        {...list}
+        actions={
+          canManage && (
+            <Button variant="primary" onClick={() => setFormState({ customer: null })}>
+              <Plus size={14} />
+              Add customer
+            </Button>
+          )
+        }
+      />
 
       <Card padded={false}>
         {list.isError ? (
@@ -72,27 +95,65 @@ export function CustomersPage() {
             columns={COLUMNS}
             data={list.items}
             getRowKey={(customer) => customer._id}
-            onRowClick={handleRowClick}
+            onRowClick={(customer) => setSelectedCustomerId(customer._id)}
             isLoading={list.isLoading}
             skeletonRowCount={8}
             emptyState={
               <div className="flex flex-col items-center gap-3">
                 <UserRoundSearch size={28} className="text-text-secondary" />
-                <p className="text-[13px] text-text-secondary">No customers match your search</p>
-                <Button variant="ghost" onClick={list.clearFilters}>
-                  Clear filters
-                </Button>
+                <p className="text-[13px] text-text-secondary">
+                  {list.hasActiveFilters ? "No customers match your search" : "No customers yet"}
+                </p>
+                {list.hasActiveFilters && (
+                  <Button variant="ghost" onClick={list.clearFilters}>
+                    Clear search
+                  </Button>
+                )}
               </div>
             }
           />
         )}
       </Card>
 
+      {!list.isLoading && !list.isError && (
+        <Pagination
+          page={list.page}
+          pageSize={list.pageSize}
+          total={list.totalCount}
+          totalPages={list.totalPages}
+          onPageChange={list.setPage}
+          label="customers"
+        />
+      )}
+
       <CustomerDrawer
-        customerId={selectedCustomerId}
-        open={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        customerId={drawerCustomerId}
+        open={Boolean(selectedCustomerId)}
+        onClose={() => setSelectedCustomerId(null)}
+        canManage={canManage}
+        canOpenTickets={can(user, "ticket.read")}
+        canCreateBooking={canCreateBooking}
+        onEdit={(customer) => setFormState({ customer })}
+        onNewBooking={(customer) => setBookingFor(customer)}
       />
+
+      <CustomerFormDialog
+        open={formState !== null}
+        customer={formState?.customer}
+        onClose={() => setFormState(null)}
+        onSaved={(customer) => {
+          if (!formState?.customer) setSelectedCustomerId(customer._id);
+        }}
+      />
+
+      {canCreateBooking && (
+        <BookingFormDialog
+          open={bookingFor !== null}
+          initialCustomer={bookingFor}
+          onClose={() => setBookingFor(null)}
+          onSaved={(booking) => navigate(`/bookings/${booking._id}`)}
+        />
+      )}
     </div>
   );
 }

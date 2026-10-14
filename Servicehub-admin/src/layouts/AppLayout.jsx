@@ -6,6 +6,7 @@ import { canViewPath } from "../lib/permissions";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { ForbiddenPage } from "../pages/errors/ForbiddenPage";
 import { getPageTitle } from "./navigation";
+import { RealtimeBridge } from "./RealtimeBridge";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
@@ -18,29 +19,40 @@ export function AppLayout() {
 
   useDocumentTitle(getPageTitle(location.pathname));
 
-  // "/" is just a redirect stub to /dashboard (see App.jsx) — every role can
-  // reach /dashboard, so it's exempt rather than being checked literally.
-  const isAllowed = location.pathname === "/" || canViewPath(user.role, location.pathname);
+  // Every route is permission-checked here, not just hidden from the nav,
+  // so typing a URL the role can't use shows "Access denied". "/" is only a
+  // redirect to /dashboard.
+  const isAllowed = location.pathname === "/" || canViewPath(user, location.pathname);
   const isFullWidth = isAllowed && FULL_WIDTH_PATHS.some((path) => location.pathname.startsWith(path));
   const content = isAllowed ? <Outlet /> : <ForbiddenPage />;
 
   return (
     <div className="flex h-screen bg-canvas text-text-primary">
-      <Sidebar
-        isOpen={isMobileNavOpen}
-        onClose={() => setIsMobileNavOpen(false)}
-      />
+      <RealtimeBridge />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <a
+        href="#main-content"
+        className="sr-only z-50 rounded-btn bg-surface px-3 py-2 text-[13px] text-text-primary focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        Skip to content
+      </a>
+
+      <Sidebar isOpen={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} />
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar onMenuClick={() => setIsMobileNavOpen(true)} />
 
-        <main className={clsx("flex-1", isFullWidth ? "overflow-hidden" : "overflow-y-auto")}>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className={clsx("flex-1 focus:outline-none", isFullWidth ? "overflow-hidden" : "overflow-y-auto")}
+        >
           {isFullWidth ? (
             <div key={location.pathname} className="animate-page-enter h-full">
               {content}
             </div>
           ) : (
-            <div key={location.pathname} className="animate-page-enter mx-auto max-w-300 p-6">
+            <div key={location.pathname} className="animate-page-enter mx-auto max-w-300 p-4 sm:p-6">
               {content}
             </div>
           )}

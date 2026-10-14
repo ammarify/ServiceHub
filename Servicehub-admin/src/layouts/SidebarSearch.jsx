@@ -1,10 +1,14 @@
 import clsx from "clsx";
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 
+const TYPE_LABELS = { booking: "Booking", customer: "Customer", ticket: "Ticket" };
+
+// Every result opens the exact record: bookings their detail page,
+// customers their profile drawer, tickets their conversation.
 function buildResults(data) {
   if (!data) return [];
   return [
@@ -20,29 +24,33 @@ function buildResults(data) {
       key: c._id,
       mono: c.phone,
       label: c.name,
-      path: "/customers",
+      path: `/customers?customer=${c._id}`,
     })),
     ...data.tickets.map((t) => ({
       type: "ticket",
       key: t._id,
       mono: t.code,
       label: t.subject,
-      path: "/support",
+      path: `/support?ticket=${t._id}`,
     })),
   ];
 }
 
-export function SidebarSearch() {
+const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+export function SidebarSearch({ onNavigate }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef(null);
   const containerRef = useRef(null);
   const navigate = useNavigate();
+  const listboxId = useId();
 
   const debouncedQuery = useDebouncedValue(query, 300);
-  const { data, isLoading } = useSearch(debouncedQuery);
+  const { data, isFetching } = useSearch(debouncedQuery);
   const results = useMemo(() => buildResults(data), [data]);
+  const isSettling = isFetching || debouncedQuery !== query;
 
   useEffect(() => {
     function handleGlobalKeyDown(event) {
@@ -50,6 +58,7 @@ export function SidebarSearch() {
       if (isMod && event.key.toLowerCase() === "k") {
         event.preventDefault();
         inputRef.current?.focus();
+        inputRef.current?.select();
       }
     }
     document.addEventListener("keydown", handleGlobalKeyDown);
@@ -57,7 +66,7 @@ export function SidebarSearch() {
   }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
     function handlePointerDown(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsOpen(false);
@@ -67,15 +76,12 @@ export function SidebarSearch() {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [isOpen]);
 
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
-
   function handleSelect(result) {
     navigate(result.path);
     setQuery("");
     setIsOpen(false);
     inputRef.current?.blur();
+    onNavigate?.();
   }
 
   function handleKeyDown(event) {
@@ -93,9 +99,11 @@ export function SidebarSearch() {
       setActiveIndex((prev) => (prev - 1 + results.length) % results.length);
     } else if (event.key === "Enter") {
       event.preventDefault();
-      handleSelect(results[activeIndex]);
+      handleSelect(results[Math.min(activeIndex, results.length - 1)]);
     }
   }
+
+  const showPanel = isOpen && query.trim().length > 0;
 
   return (
     <div ref={containerRef} className="relative">
@@ -104,9 +112,15 @@ export function SidebarSearch() {
         <input
           ref={inputRef}
           type="text"
+          role="combobox"
+          aria-label="Search bookings, customers and tickets"
+          aria-expanded={showPanel}
+          aria-controls={listboxId}
+          aria-activedescendant={showPanel && results.length ? `${listboxId}-${activeIndex}` : undefined}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
+            setActiveIndex(0);
             setIsOpen(true);
           }}
           onFocus={() => query && setIsOpen(true)}
@@ -114,12 +128,16 @@ export function SidebarSearch() {
           placeholder="Search..."
           className="w-full bg-transparent text-[13px] text-text-primary placeholder:text-text-secondary focus:outline-none"
         />
-        <span className="shrink-0 text-[11px] text-text-secondary">⌘K</span>
+        <kbd className="font-data shrink-0 text-[11px] text-text-secondary">{isMac ? "⌘K" : "Ctrl K"}</kbd>
       </div>
 
-      {isOpen && query && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-card border border-border bg-surface p-1 shadow-card">
-          {isLoading ? (
+      {showPanel && (
+        <div
+          id={listboxId}
+          role="listbox"
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-card border border-border bg-surface p-1 shadow-card"
+        >
+          {isSettling && results.length === 0 ? (
             <p className="px-3 py-2.5 text-[13px] text-text-secondary">Searching…</p>
           ) : results.length === 0 ? (
             <p className="px-3 py-2.5 text-[13px] text-text-secondary">No results</p>
@@ -127,6 +145,9 @@ export function SidebarSearch() {
             results.map((result, index) => (
               <button
                 key={`${result.type}-${result.key}`}
+                id={`${listboxId}-${index}`}
+                role="option"
+                aria-selected={index === activeIndex}
                 type="button"
                 onClick={() => handleSelect(result)}
                 onMouseEnter={() => setActiveIndex(index)}
@@ -138,9 +159,8 @@ export function SidebarSearch() {
                 <span className="font-data w-16 shrink-0 truncate text-[11px] text-text-secondary">
                   {result.mono}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[13px] text-text-primary">
-                  {result.label}
-                </span>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-text-primary">{result.label}</span>
+                <span className="shrink-0 text-[11px] text-text-secondary">{TYPE_LABELS[result.type]}</span>
               </button>
             ))
           )}

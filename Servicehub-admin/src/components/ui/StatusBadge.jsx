@@ -21,6 +21,9 @@ const STATUS_TONE = {
   angry: "danger",
   active: "success",
   disabled: "danger",
+  invited: "warning",
+  verified: "success",
+  unverified: "warning",
 };
 
 const DOT_CLASSES = {
