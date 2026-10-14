@@ -1,15 +1,15 @@
 import { env, isProduction } from "../config/env.js";
 
 export const ACCESS_COOKIE = "accessToken";
-export const REFRESH_COOKIE = "refreshToken";
+// Renamed from "refreshToken" when the cookie moved to a wider path: a
+// leftover cookie of the same name at the old, more specific path would be
+// sent first and shadow the current one. A new name avoids that entirely.
+export const REFRESH_COOKIE = "sh_refresh";
 
 // The refresh cookie is only sent to the auth routes (/refresh and /logout
 // need it); every other API call only ever carries the access cookie.
 const REFRESH_COOKIE_PATH = "/api/auth";
-// Earlier releases scoped the refresh cookie to /api/auth/refresh. A stale
-// cookie at that more specific path would be sent ahead of the current one,
-// so it is cleared whenever auth cookies are written or removed.
-const LEGACY_REFRESH_COOKIE_PATH = "/api/auth/refresh";
+const LEGACY_REFRESH_COOKIE = { name: "refreshToken", path: "/api/auth/refresh" };
 
 function baseOptions() {
   return {
@@ -33,11 +33,11 @@ export function setAuthCookies(res, { accessToken, refreshToken, maxAgeMs }) {
 
   res.cookie(ACCESS_COOKIE, accessToken, { ...baseOptions(), path: "/", ...lifetime });
   res.cookie(REFRESH_COOKIE, refreshToken, { ...baseOptions(), path: REFRESH_COOKIE_PATH, ...lifetime });
-  res.clearCookie(REFRESH_COOKIE, { ...baseOptions(), path: LEGACY_REFRESH_COOKIE_PATH });
+  res.clearCookie(LEGACY_REFRESH_COOKIE.name, { ...baseOptions(), path: LEGACY_REFRESH_COOKIE.path });
 }
 
 export function clearAuthCookies(res) {
   res.clearCookie(ACCESS_COOKIE, { ...baseOptions(), path: "/" });
   res.clearCookie(REFRESH_COOKIE, { ...baseOptions(), path: REFRESH_COOKIE_PATH });
-  res.clearCookie(REFRESH_COOKIE, { ...baseOptions(), path: LEGACY_REFRESH_COOKIE_PATH });
+  res.clearCookie(LEGACY_REFRESH_COOKIE.name, { ...baseOptions(), path: LEGACY_REFRESH_COOKIE.path });
 }

@@ -32,7 +32,7 @@ describe("login", () => {
     expect(res.body.user.passwordHash).toBeUndefined();
 
     const access = findCookie(res, "accessToken", "/");
-    const refresh = findCookie(res, "refreshToken", "/api/auth");
+    const refresh = findCookie(res, "sh_refresh", "/api/auth");
     expect(access?.httponly).toBe(true);
     expect(refresh?.httponly).toBe(true);
     // Without "keep me logged in" both are browser-session cookies.
@@ -51,7 +51,7 @@ describe("login", () => {
     expect(res.status).toBe(200);
     const thirtyDays = 30 * 24 * 60 * 60;
     expect(Number(findCookie(res, "accessToken", "/")["max-age"])).toBeGreaterThan(thirtyDays - 60);
-    expect(Number(findCookie(res, "refreshToken", "/api/auth")["max-age"])).toBeGreaterThan(thirtyDays - 60);
+    expect(Number(findCookie(res, "sh_refresh", "/api/auth")["max-age"])).toBeGreaterThan(thirtyDays - 60);
     expect(await Session.countDocuments({ user: user._id, remember: true })).toBe(1);
   });
 
@@ -123,8 +123,8 @@ describe("refresh token rotation", () => {
     expect(refreshed.status).toBe(200);
     expect(refreshed.body.user.id).toBe(user._id.toString());
     const secondCookies = cookieHeaderFrom(refreshed);
-    expect(findCookie(refreshed, "refreshToken", "/api/auth").value).not.toBe(
-      findCookie(login, "refreshToken", "/api/auth").value
+    expect(findCookie(refreshed, "sh_refresh", "/api/auth").value).not.toBe(
+      findCookie(login, "sh_refresh", "/api/auth").value
     );
 
     // Pretend the grace window for concurrent tabs has passed.
