@@ -139,6 +139,11 @@ describe("refresh token rotation", () => {
     const afterReplay = await anonymous().post("/api/auth/refresh").set("Cookie", secondCookies);
     expect(afterReplay.status).toBe(401);
     expect((await Session.findOne({ user: user._id })).revokedReason).toBe("refresh_token_reuse");
+
+    // The access token the legitimate rotation handed out is dead too.
+    const me = await anonymous().get("/api/auth/me").set("Cookie", secondCookies);
+    expect(me.status).toBe(401);
+    expect(me.body.code).toBe("SESSION_REVOKED");
   });
 
   it("lets two tabs refresh with the same token at the same moment", async () => {
@@ -182,6 +187,31 @@ describe("logout", () => {
     const refresh = await anonymous().post("/api/auth/refresh").set("Cookie", cookies);
     expect(refresh.status).toBe(401);
     expect((await Session.findOne({ user: user._id })).revokedReason).toBe("logout");
+  });
+
+  it("also ends the access token issued for that session, not just the refresh token", async () => {
+    const user = await createUser();
+    const login = await anonymous().post("/api/auth/login").send({ email: user.email, password: DEFAULT_PASSWORD });
+    const cookies = cookieHeaderFrom(login);
+    expect((await anonymous().get("/api/auth/me").set("Cookie", cookies)).status).toBe(200);
+
+    await anonymous().post("/api/auth/logout").set("Cookie", cookies);
+
+    // A copy of the (still unexpired) access token is useless after sign-out.
+    const me = await anonymous().get("/api/auth/me").set("Cookie", cookies);
+    expect(me.status).toBe(401);
+    expect(me.body.code).toBe("SESSION_REVOKED");
+  });
+
+  it("leaves the user's other sessions alone", async () => {
+    const user = await createUser();
+    const laptop = await signIn(user);
+    const phone = await signIn(user);
+
+    expect((await laptop.post("/api/auth/logout")).status).toBe(200);
+
+    expect((await phone.get("/api/auth/me")).status).toBe(200);
+    expect((await phone.post("/api/auth/refresh")).status).toBe(200);
   });
 
   it("'log out everywhere' ends every session immediately", async () => {

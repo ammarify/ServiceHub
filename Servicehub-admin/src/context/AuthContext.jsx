@@ -7,7 +7,8 @@ const AuthContext = createContext(null);
 
 const SESSION_MESSAGES = {
   SESSION_EXPIRED: "Your session expired. Please sign in again.",
-  SESSION_REVOKED: "You were signed out because your account or password changed. Please sign in again.",
+  SESSION_REVOKED:
+    "You were signed out because your session was ended (a password or role change, or “Sign out everywhere”). Please sign in again.",
   ACCOUNT_DISABLED: "Your account has been disabled. Contact an administrator.",
 };
 

@@ -6,7 +6,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { parseDuration } from "../utils/duration.js";
 import { ACCESS_COOKIE, REFRESH_COOKIE, setAuthCookies } from "../utils/cookies.js";
 import { signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken } from "../utils/jwt.js";
-import { invalidateAuthCache } from "../middleware/auth.js";
+import { invalidateAuthCache, invalidateSessionCache } from "../middleware/auth.js";
 import { disconnectSession, disconnectUser } from "../sockets/emitter.js";
 
 // How long the refresh token a rotation just replaced keeps working. Two
@@ -76,6 +76,8 @@ async function revokeSession(sessionId, reason) {
     { _id: sessionId, revokedAt: null },
     { $set: { revokedAt: new Date(), revokedReason: reason } }
   );
+  // The session's access token stops working right away, not when it expires.
+  invalidateSessionCache(sessionId);
 }
 
 // Exchanges a refresh token for a new access + refresh token pair. Each
