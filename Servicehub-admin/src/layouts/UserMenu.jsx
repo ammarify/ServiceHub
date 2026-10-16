@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Avatar } from "../components/ui/Avatar";
 import { useAuth } from "../context/AuthContext";
 import { useDismiss } from "../lib/useDismiss";
+import { humanize } from "../lib/formatters";
 
 export function UserMenu({ onNavigate }) {
   const { user, logout } = useAuth();
@@ -56,7 +57,7 @@ export function UserMenu({ onNavigate }) {
             {user.name}
           </div>
           <div className="font-data text-[10px] uppercase text-text-secondary">
-            {user.role}
+            {humanize(user.role)}
           </div>
         </div>
       </button>

@@ -102,8 +102,8 @@ export function SettingsPage() {
       key: "role",
       label: "Role",
       render: (member) => (
-        <span className="font-data inline-block rounded-btn border border-border px-2 py-0.5 text-[12px] lowercase text-text-secondary">
-          {member.role}
+        <span className="inline-block whitespace-nowrap rounded-btn border border-border px-2 py-0.5 text-[12px] text-text-secondary">
+          {roleLabel(member.role)}
         </span>
       ),
     },

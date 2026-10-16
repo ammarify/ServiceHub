@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "../../lib/api";
+import { humanize } from "../../lib/formatters";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { useSimulatorSocket } from "./useSimulatorSocket";
 
@@ -314,7 +315,7 @@ export function SimulatorPage() {
               <div>
                 <div className="font-bold">{active.ticket.subject}</div>
                 <div className="text-gray-500">
-                  {active.ticket.code} · {active.ticket.status}
+                  {active.ticket.code} · {humanize(active.ticket.status)}
                 </div>
               </div>
               <button

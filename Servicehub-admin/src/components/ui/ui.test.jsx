@@ -86,8 +86,9 @@ describe("ConfirmDialog", () => {
 });
 
 describe("StatusBadge", () => {
-  it("shows the status as a label", () => {
+  it("shows the status as a readable label", () => {
     render(<StatusBadge status="in_progress" />);
-    expect(screen.getByText(/in_progress/i)).toBeInTheDocument();
+    expect(screen.getByText("in progress")).toBeInTheDocument();
+    expect(screen.queryByText(/in_progress/)).not.toBeInTheDocument();
   });
 });
