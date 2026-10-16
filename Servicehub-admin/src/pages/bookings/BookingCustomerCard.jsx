@@ -2,16 +2,18 @@ import { Link } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { DetailField } from "../../components/ui/DetailField";
 import { Skeleton } from "../../components/ui/Skeleton";
-import { formatNumber } from "../../lib/formatters";
 
-export function BookingCustomerCard({ customer, isLoading }) {
+// Uses the customer embedded in the booking response, so every role that
+// can open a booking sees who it's for - only the link to the full profile
+// depends on customer access.
+export function BookingCustomerCard({ customer, isLoading, canOpenProfile }) {
   return (
     <Card>
       <div className="flex items-center justify-between">
         <div className="text-[15px] font-semibold text-text-primary">Customer</div>
-        {!isLoading && customer && (
-          <Link to="/customers" className="text-[13px] text-accent hover:underline">
-            View
+        {!isLoading && customer && canOpenProfile && (
+          <Link to={`/customers?customer=${customer._id}`} className="text-[13px] text-accent hover:underline">
+            View profile
           </Link>
         )}
       </div>
@@ -30,12 +32,9 @@ export function BookingCustomerCard({ customer, isLoading }) {
               {customer.phone}
             </DetailField>
             <DetailField label="Area">{customer.area}</DetailField>
-            <DetailField label="Total Bookings" mono>
-              {formatNumber(customer.totalBookings)}
-            </DetailField>
           </>
         ) : (
-          <p className="text-[13px] text-text-secondary">No customer found.</p>
+          <p className="text-[13px] text-text-secondary">Customer record not found.</p>
         )}
       </div>
     </Card>

@@ -81,7 +81,9 @@ export function DataTable({
                   <td
                     key={col.key}
                     className={clsx(
-                      "px-3",
+                      // Rows stay one line (44px); narrow screens scroll the
+                      // table sideways instead of wrapping "BK-" / "4801".
+                      "whitespace-nowrap px-3",
                       col.align === "right" ? "text-right" : "text-left",
                     )}
                   >

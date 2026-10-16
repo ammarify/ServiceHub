@@ -1,12 +1,15 @@
-import { BadgeCheck, Star } from "lucide-react";
+import { BadgeCheck, Pencil, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Avatar } from "../../components/ui/Avatar";
+import { Button } from "../../components/ui/Button";
 import { DetailField } from "../../components/ui/DetailField";
 import { Drawer } from "../../components/ui/Drawer";
 import { QueryError } from "../../components/ui/QueryError";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { StatusBadge } from "../../components/ui/StatusBadge";
-import { useProvider } from "../../hooks/useProviders";
+import { useToast } from "../../context/ToastContext";
+import { useProvider, useUpdateProvider } from "../../hooks/useProviders";
+import { errorMessage } from "../../lib/api";
 import { formatDate, formatNumber, formatUSD } from "../../lib/formatters";
 
 function ProviderDrawerSkeleton() {
@@ -26,41 +29,73 @@ function ProviderDrawerSkeleton() {
   );
 }
 
-export function ProviderDrawer({ providerId, open, onClose }) {
-  const { data, isLoading, isError, refetch } = useProvider(providerId);
+export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit }) {
+  const toast = useToast();
+  const { data, isLoading, isError, error, refetch } = useProvider(providerId);
+  const updateMutation = useUpdateProvider(providerId);
 
   const provider = data?.provider;
-  const earnings = data?.earnings ?? 0;
-  const jobs = data?.jobs ?? 0;
   const recentJobs = data?.recentBookings ?? [];
+  const notFound = error?.response?.status === 404;
+
+  function toggle(field) {
+    const nextValue = !provider[field];
+    updateMutation.mutate(
+      { [field]: nextValue },
+      {
+        onSuccess: (detail) => {
+          const label =
+            field === "isAvailable"
+              ? nextValue
+                ? "is now available for new jobs"
+                : "is now off duty"
+              : nextValue
+                ? "is now verified"
+                : "is no longer marked verified";
+          toast.success(`${detail.provider.name} ${label}.`);
+        },
+        onError: (err) => toast.error(errorMessage(err)),
+      }
+    );
+  }
 
   return (
     <Drawer open={open} onClose={onClose} title="Provider profile">
       {isError ? (
-        <QueryError message="Couldn't load this provider." onRetry={refetch} />
+        <QueryError
+          message={notFound ? "This provider doesn't exist anymore." : "Couldn't load this provider."}
+          onRetry={notFound ? undefined : refetch}
+        />
       ) : isLoading || !provider ? (
         <ProviderDrawerSkeleton />
       ) : (
         <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-3">
-            <Avatar name={provider.name} size={48} />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[15px] font-semibold text-text-primary">{provider.name}</span>
-                {provider.verified && <BadgeCheck size={15} className="text-success" />}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Avatar name={provider.name} size={48} />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[15px] font-semibold text-text-primary">{provider.name}</span>
+                  {provider.verified && <BadgeCheck size={15} className="text-success" aria-label="Verified" />}
+                </div>
+                <div className="mt-0.5">
+                  <StatusBadge status={provider.isAvailable ? "available" : "off_duty"} />
+                </div>
               </div>
-              <div className="text-[13px] text-text-secondary">{provider.area}</div>
             </div>
+            {canManage && (
+              <Button variant="ghost" onClick={() => onEdit(provider)} aria-label="Edit provider">
+                <Pencil size={14} />
+                Edit
+              </Button>
+            )}
           </div>
 
           <div>
             <div className="mb-2 text-[12px] text-text-secondary">Services</div>
             <div className="flex flex-wrap gap-1.5">
               {provider.services.map((service) => (
-                <span
-                  key={service}
-                  className="rounded-btn border border-border px-2 py-1 text-[12px] text-text-primary"
-                >
+                <span key={service} className="rounded-btn border border-border px-2 py-1 text-[12px] text-text-primary">
                   {service}
                 </span>
               ))}
@@ -78,13 +113,13 @@ export function ProviderDrawer({ providerId, open, onClose }) {
             <div>
               <div className="text-[11px] uppercase tracking-wide text-text-secondary">Jobs</div>
               <div className="font-data mt-0.5 text-[15px] font-semibold text-text-primary">
-                {formatNumber(jobs)}
+                {formatNumber(data.jobs)}
               </div>
             </div>
             <div>
               <div className="text-[11px] uppercase tracking-wide text-text-secondary">Earnings</div>
               <div className="font-data mt-0.5 text-[15px] font-semibold text-text-primary">
-                {formatUSD(earnings)}
+                {formatUSD(data.earnings)}
               </div>
             </div>
           </div>
@@ -94,13 +129,32 @@ export function ProviderDrawer({ providerId, open, onClose }) {
               {provider.phone}
             </DetailField>
             <DetailField label="Area">{provider.area}</DetailField>
+            <DetailField label="Active bookings" mono>
+              {formatNumber(data.activeBookings ?? 0)}
+            </DetailField>
+            <DetailField label="Lifetime jobs" mono>
+              {formatNumber(provider.jobsCompleted)}
+            </DetailField>
             <DetailField label="Joined" mono>
               {formatDate(provider.joinedAt)}
             </DetailField>
           </div>
 
+          {canManage && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" disabled={updateMutation.isPending} onClick={() => toggle("isAvailable")}>
+                {provider.isAvailable ? "Mark off duty" : "Mark available"}
+              </Button>
+              <Button variant="secondary" disabled={updateMutation.isPending} onClick={() => toggle("verified")}>
+                {provider.verified ? "Remove verification" : "Mark verified"}
+              </Button>
+            </div>
+          )}
+
           <div>
-            <div className="mb-2 text-[13px] font-semibold text-text-primary">Recent jobs</div>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[13px] font-semibold text-text-primary">Recent jobs</span>
+            </div>
             {recentJobs.length === 0 ? (
               <p className="text-[13px] text-text-secondary">No jobs yet.</p>
             ) : (

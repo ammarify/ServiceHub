@@ -37,7 +37,8 @@ const usdCentsFormatter = new Intl.NumberFormat("en-US", {
 });
 
 export function formatUSD(amount) {
-  return Number.isInteger(amount) ? usdWholeFormatter.format(amount) : usdCentsFormatter.format(amount);
+  const value = Number(amount) || 0;
+  return Number.isInteger(value) ? usdWholeFormatter.format(value) : usdCentsFormatter.format(value);
 }
 
 export function formatDate(date) {
@@ -54,6 +55,18 @@ export function formatTime(date) {
 
 export function formatShortDate(date) {
   return shortDateFormatter.format(new Date(date));
+}
+
+// "2026-10-14" (a calendar day from the API, already in the viewer's zone)
+// -> "Oct 14". Parsed as a local date: new Date("2026-10-14") would mean UTC
+// midnight and show the previous day anywhere west of Greenwich.
+export function parseDateKey(key) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+export function formatDateKey(key) {
+  return shortDateFormatter.format(parseDateKey(key));
 }
 
 const RELATIVE_UNITS = [
@@ -87,10 +100,31 @@ export function formatPercent(value) {
 }
 
 export function initials(name) {
-  return name
+  return (name ?? "")
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((word) => word[0].toUpperCase())
     .join("");
+}
+
+// "in_progress" -> "In progress"
+export function humanize(value) {
+  const text = String(value ?? "").replaceAll("_", " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// Value for <input type="datetime-local"> in the viewer's local time.
+export function toDateTimeInputValue(date) {
+  const d = new Date(date);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export function browserTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
 }

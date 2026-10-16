@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../../lib/api";
+import { api, errorMessage } from "../../lib/api";
+import { humanize } from "../../lib/formatters";
+import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { useSimulatorSocket } from "./useSimulatorSocket";
 
 const PRIORITIES = ["low", "medium", "high"];
 
+function appendUnique(messages, message) {
+  const exists = messages.some((m) => m.from === message.from && m.text === message.text && m.at === message.at);
+  return exists ? messages : [...messages, message];
+}
+
 export function SimulatorPage() {
+  useDocumentTitle("Customer simulator");
   const [customers, setCustomers] = useState([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [optionsError, setOptionsError] = useState("");
@@ -17,7 +25,8 @@ export function SimulatorPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const [activeTicket, setActiveTicket] = useState(null);
+  // { ticket, token } for the open conversation.
+  const [active, setActive] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -25,6 +34,7 @@ export function SimulatorPage() {
 
   const threadRef = useRef(null);
   const socket = useSimulatorSocket();
+  const activeTicketId = active?.ticket._id;
 
   useEffect(() => {
     let cancelled = false;
@@ -33,8 +43,13 @@ export function SimulatorPage() {
       .then((res) => {
         if (!cancelled) setCustomers(res.data.customers);
       })
-      .catch(() => {
-        if (!cancelled) setOptionsError("Couldn't load demo customers. Is the API running?");
+      .catch((error) => {
+        if (cancelled) return;
+        setOptionsError(
+          error.response?.status === 404
+            ? "The customer simulator is turned off on this server (DEMO_MODE is disabled)."
+            : "Couldn't load demo customers. Is the API running?"
+        );
       })
       .finally(() => {
         if (!cancelled) setIsLoadingOptions(false);
@@ -44,15 +59,22 @@ export function SimulatorPage() {
     };
   }, []);
 
+  const { onMessage, onTicketUpdated } = socket;
   useEffect(() => {
-    if (!activeTicket) return undefined;
-    const unsubscribe = socket.onMessage((payload) => {
-      if (payload.ticketId !== activeTicket._id) return;
-      setMessages((prev) => [...prev, payload.message]);
+    if (!activeTicketId) return undefined;
+    const stopMessages = onMessage((payload) => {
+      if (payload.ticketId !== activeTicketId) return;
+      setMessages((prev) => appendUnique(prev, payload.message));
     });
-    return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTicket?._id]);
+    const stopUpdates = onTicketUpdated((payload) => {
+      if (payload.ticketId !== activeTicketId) return;
+      setActive((prev) => (prev ? { ...prev, ticket: { ...prev.ticket, status: payload.status } } : prev));
+    });
+    return () => {
+      stopMessages();
+      stopUpdates();
+    };
+  }, [activeTicketId, onMessage, onTicketUpdated]);
 
   useEffect(() => {
     const el = threadRef.current;
@@ -71,10 +93,22 @@ export function SimulatorPage() {
   }
 
   function handleStartOver() {
-    if (activeTicket) socket.leaveTicket(activeTicket._id);
-    setActiveTicket(null);
+    if (active) socket.leaveTicket(active.ticket._id);
+    setActive(null);
     setMessages([]);
+    setDraft("");
+    setSendError("");
     resetPicker();
+  }
+
+  async function openConversation({ ticket, token }) {
+    setActive({ ticket, token });
+    setMessages(ticket.messages);
+    try {
+      await socket.joinTicket(ticket._id, token);
+    } catch (error) {
+      setSendError(error.message);
+    }
   }
 
   async function handleStartTicket(event) {
@@ -93,12 +127,9 @@ export function SimulatorPage() {
         text: firstMessage.trim(),
         priority,
       });
-      const ticket = res.data.ticket;
-      setActiveTicket(ticket);
-      setMessages(ticket.messages);
-      socket.joinTicket(ticket._id);
+      await openConversation(res.data);
     } catch (error) {
-      setFormError(error.response?.data?.message ?? "Couldn't start the ticket.");
+      setFormError(errorMessage(error, "Couldn't start the ticket."));
     } finally {
       setIsStarting(false);
     }
@@ -108,13 +139,13 @@ export function SimulatorPage() {
     setFormError("");
     setIsStarting(true);
     try {
-      const res = await api.get(`/tickets/simulator/${ticketRef.id}`);
-      const ticket = res.data.ticket;
-      setActiveTicket(ticket);
-      setMessages(ticket.messages);
-      socket.joinTicket(ticket._id);
+      const res = await api.post("/tickets/simulator/session", {
+        customerId: selectedCustomerId,
+        ticketId: ticketRef.id,
+      });
+      await openConversation(res.data);
     } catch (error) {
-      setFormError(error.response?.data?.message ?? "Couldn't load that ticket.");
+      setFormError(errorMessage(error, "Couldn't load that ticket."));
     } finally {
       setIsStarting(false);
     }
@@ -123,11 +154,12 @@ export function SimulatorPage() {
   async function handleSend(event) {
     event.preventDefault();
     const text = draft.trim();
-    if (!text || !activeTicket) return;
+    if (!text || !active) return;
     setSendError("");
     setIsSending(true);
     try {
-      await socket.sendMessage(activeTicket._id, text);
+      const message = await socket.sendMessage(active.ticket._id, text);
+      setMessages((prev) => appendUnique(prev, message));
       setDraft("");
     } catch (error) {
       setSendError(error.message);
@@ -142,12 +174,16 @@ export function SimulatorPage() {
         <div className="mb-4 border-2 border-dashed border-gray-400 bg-yellow-50 p-3">
           <div className="text-[15px] font-bold">Demo Customer Simulator</div>
           <p className="mt-1 text-gray-600">
-            This is a test harness for the live support demo — it is not part of the admin panel
-            and has no login. It stands in for a real customer-facing chat widget.
+            This is a test harness for the live support demo — it is not part of the admin panel and has no login. It
+            stands in for a real customer-facing chat widget.
           </p>
         </div>
 
-        {!activeTicket ? (
+        {socket.connectionError && (
+          <p className="mb-4 border border-red-300 bg-red-50 p-2 text-red-700">{socket.connectionError}</p>
+        )}
+
+        {!active ? (
           <div className="flex flex-col gap-4">
             <div className="border border-gray-300 bg-white p-4">
               <label className="block font-bold" htmlFor="customer-select">
@@ -201,8 +237,7 @@ export function SimulatorPage() {
 
                 <div className="border border-gray-300 bg-white p-4">
                   <div className="font-bold">
-                    {selectedCustomer.openTickets.length > 0 ? "2b. Or start" : "2. Start"} a new
-                    ticket
+                    {selectedCustomer.openTickets.length > 0 ? "2b. Or start" : "2. Start"} a new ticket
                   </div>
                   <form onSubmit={handleStartTicket} className="mt-2 flex flex-col gap-2.5">
                     <label className="flex flex-col gap-1">
@@ -241,6 +276,7 @@ export function SimulatorPage() {
                       <input
                         type="text"
                         value={subject}
+                        maxLength={200}
                         onChange={(event) => setSubject(event.target.value)}
                         placeholder="e.g. AC still not cooling"
                         className="border border-gray-400 bg-white p-2"
@@ -251,6 +287,7 @@ export function SimulatorPage() {
                       Message
                       <textarea
                         value={firstMessage}
+                        maxLength={2000}
                         onChange={(event) => setFirstMessage(event.target.value)}
                         rows={3}
                         placeholder="Describe the issue…"
@@ -276,9 +313,9 @@ export function SimulatorPage() {
           <div className="flex flex-col border border-gray-300 bg-white">
             <div className="flex items-center justify-between border-b border-gray-300 bg-gray-50 p-3">
               <div>
-                <div className="font-bold">{activeTicket.subject}</div>
+                <div className="font-bold">{active.ticket.subject}</div>
                 <div className="text-gray-500">
-                  {activeTicket.code} · {activeTicket.status}
+                  {active.ticket.code} · {humanize(active.ticket.status)}
                 </div>
               </div>
               <button
@@ -291,15 +328,13 @@ export function SimulatorPage() {
             </div>
 
             {socket.typingFrom === "agent" && (
-              <div className="border-b border-gray-300 bg-gray-50 px-3 py-1 text-gray-500">
-                Agent is typing…
-              </div>
+              <div className="border-b border-gray-300 bg-gray-50 px-3 py-1 text-gray-500">Agent is typing…</div>
             )}
 
             <div ref={threadRef} className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto p-3">
               {messages.map((message, index) => (
                 <div
-                  key={index}
+                  key={`${message.at}-${index}`}
                   className={
                     message.from === "customer"
                       ? "ml-auto max-w-[75%] border border-blue-300 bg-blue-50 p-2"
@@ -307,7 +342,7 @@ export function SimulatorPage() {
                   }
                 >
                   <div className="text-gray-500">{message.senderName}</div>
-                  <div>{message.text}</div>
+                  <div className="whitespace-pre-wrap break-words">{message.text}</div>
                 </div>
               ))}
             </div>
@@ -316,11 +351,13 @@ export function SimulatorPage() {
               <input
                 type="text"
                 value={draft}
+                maxLength={2000}
                 onChange={(event) => {
                   setDraft(event.target.value);
-                  socket.emitTyping(activeTicket._id);
+                  socket.emitTyping(active.ticket._id);
                 }}
                 placeholder="Type a message…"
+                aria-label="Message"
                 className="flex-1 border border-gray-400 bg-white p-2"
               />
               <button
@@ -328,7 +365,7 @@ export function SimulatorPage() {
                 disabled={isSending || !draft.trim()}
                 className="border border-blue-700 bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                Send
+                {isSending ? "Sending…" : "Send"}
               </button>
             </form>
             {sendError && <p className="border-t border-gray-300 p-2 text-red-600">{sendError}</p>}
