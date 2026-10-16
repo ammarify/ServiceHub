@@ -30,15 +30,16 @@ function isValidTimeZone(value) {
   }
 }
 
+const required = (name) => z.string({ error: `${name} is required` });
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(5000),
-  MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
+  MONGODB_URI: required("MONGODB_URI").min(1, "MONGODB_URI is required"),
 
   // One or more allowed browser origins, comma-separated. The first one is
   // also the base URL used for links in emails (password reset, invites).
-  CLIENT_URL: z
-    .string()
+  CLIENT_URL: required("CLIENT_URL")
     .min(1, "CLIENT_URL is required")
     .transform((value) =>
       value
@@ -48,8 +49,8 @@ const envSchema = z.object({
     )
     .pipe(z.array(z.string().url("CLIENT_URL must contain valid URLs")).min(1)),
 
-  JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
-  JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 characters"),
+  JWT_ACCESS_SECRET: required("JWT_ACCESS_SECRET").min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
+  JWT_REFRESH_SECRET: required("JWT_REFRESH_SECRET").min(32, "JWT_REFRESH_SECRET must be at least 32 characters"),
   // Access tokens are short-lived on purpose; the refresh flow renews them.
   // Lowering this (e.g. "30s") is handy for exercising silent refresh by hand.
   ACCESS_TOKEN_TTL: duration("ACCESS_TOKEN_TTL").default("15m"),
@@ -98,7 +99,13 @@ const envSchema = z.object({
   DISABLE_RATE_LIMITS: booleanString.optional().default(false),
 });
 
-const parsed = envSchema.safeParse(process.env);
+// A blank value ("DEMO_MODE=" in .env, as in .env.example) means "not set":
+// the setting falls back to its default instead of failing validation.
+const rawEnv = Object.fromEntries(
+  Object.entries(process.env).map(([key, value]) => [key, typeof value === "string" && value.trim() === "" ? undefined : value])
+);
+
+const parsed = envSchema.safeParse(rawEnv);
 
 if (!parsed.success) {
   const issues = parsed.error.issues
