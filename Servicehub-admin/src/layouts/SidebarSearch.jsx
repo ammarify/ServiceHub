@@ -131,11 +131,13 @@ export function SidebarSearch({ onNavigate }) {
         <kbd className="font-data shrink-0 text-[11px] text-text-secondary">{isMac ? "⌘K" : "Ctrl K"}</kbd>
       </div>
 
+      {/* Wider than the sidebar input so names and subjects aren't cut to a
+          few characters; it overlaps the page content while open. */}
       {showPanel && (
         <div
           id={listboxId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-card border border-border bg-surface p-1 shadow-card"
+          className="absolute left-0 top-full z-50 mt-1 max-h-80 w-[min(400px,calc(100vw-1.5rem))] overflow-y-auto rounded-card border border-border bg-surface p-1 shadow-card"
         >
           {isSettling && results.length === 0 ? (
             <p className="px-3 py-2.5 text-[13px] text-text-secondary">Searching…</p>
