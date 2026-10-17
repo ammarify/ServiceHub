@@ -1,3 +1,4 @@
+import { CircleCheck, CircleX } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
@@ -148,7 +149,13 @@ export function RefundDrawer({ refundId, open, onClose, onDecided }) {
       <ConfirmDialog
         open={confirmAction !== null}
         onClose={() => setConfirmAction(null)}
-        title={confirmAction === "approve" ? "Approve refund" : "Reject refund"}
+        title={
+          refund
+            ? `${confirmAction === "approve" ? "Approve" : "Reject"} ${formatUSD(refund.amount)} refund ${refund.code}?`
+            : ""
+        }
+        icon={confirmAction === "approve" ? CircleCheck : CircleX}
+        tone={confirmAction === "approve" ? "default" : "danger"}
         onSubmit={handleConfirm}
         footer={
           <>
@@ -157,11 +164,11 @@ export function RefundDrawer({ refundId, open, onClose, onDecided }) {
             </Button>
             <Button
               type="submit"
-              variant={confirmAction === "approve" ? "primary" : "secondary"}
+              variant="primary"
               tone={confirmAction === "reject" ? "danger" : "default"}
               disabled={decideMutation.isPending}
             >
-              {decideMutation.isPending ? "Saving…" : confirmAction === "approve" ? "Approve" : "Reject"}
+              {decideMutation.isPending ? "Saving…" : confirmAction === "approve" ? "Approve refund" : "Reject refund"}
             </Button>
           </>
         }
@@ -169,14 +176,14 @@ export function RefundDrawer({ refundId, open, onClose, onDecided }) {
         {refund && (
           <div className="flex flex-col gap-3 text-left">
             {decisionError && (
-              <p role="alert" className="text-danger">
+              <p role="alert" className="rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
                 {decisionError}
               </p>
             )}
             <p>
-              {confirmAction === "approve" ? "Approve" : "Reject"} refund{" "}
-              <span className="font-data text-text-primary">{refund.code}</span> for{" "}
-              <span className="font-data text-text-primary">{formatUSD(refund.amount)}</span>?
+              {confirmAction === "approve"
+                ? "The customer is refunded and the requester is notified. Decisions can't be changed later."
+                : "No money is returned and the requester is notified. Decisions can't be changed later."}
             </p>
             <FormField label="Note (optional)" hint="Visible to everyone who opens this refund.">
               <Textarea value={note} onChange={(event) => setNote(event.target.value)} rows={2} maxLength={500} />

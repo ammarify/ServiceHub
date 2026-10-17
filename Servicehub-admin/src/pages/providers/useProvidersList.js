@@ -1,26 +1,31 @@
 import { useMemo, useState } from "react";
 import { useProviders } from "../../hooks/useProviders";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
-
-const PAGE_SIZE = 15;
+import { usePageSize } from "../../lib/usePageSize";
 
 export function useProvidersList() {
   const [search, setSearchRaw] = useState("");
   const [serviceFilter, setServiceFilterRaw] = useState("all");
   const [availableOnly, setAvailableOnlyRaw] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeRaw] = usePageSize("providers");
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const params = useMemo(() => {
-    const p = { page, limit: PAGE_SIZE };
+    const p = { page, limit: pageSize };
     if (serviceFilter !== "all") p.service = serviceFilter;
     if (availableOnly) p.availableOnly = "true";
     if (debouncedSearch.trim()) p.search = debouncedSearch.trim();
     return p;
-  }, [page, serviceFilter, availableOnly, debouncedSearch]);
+  }, [page, pageSize, serviceFilter, availableOnly, debouncedSearch]);
 
   const query = useProviders(params);
+
+  function setPageSize(value) {
+    setPageSizeRaw(value);
+    setPage(1);
+  }
 
   function setSearch(value) {
     setSearchRaw(value);
@@ -53,13 +58,15 @@ export function useProvidersList() {
     toggleAvailableOnly,
     page,
     setPage,
-    pageSize: PAGE_SIZE,
+    pageSize,
+    setPageSize,
     items: query.data?.items ?? [],
     totalCount: query.data?.total ?? 0,
     totalPages: query.data?.pages ?? 1,
     clearFilters,
     hasActiveFilters: search !== "" || serviceFilter !== "all" || availableOnly,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     refetch: query.refetch,
   };

@@ -1,9 +1,12 @@
-import { PackageSearch, Plus } from "lucide-react";
+import { CircleDashed, PackageSearch, Plus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ServiceLabel } from "../../components/ServiceIcon";
+import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { DataTable } from "../../components/ui/DataTable";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { Pagination } from "../../components/ui/Pagination";
 import { QueryError } from "../../components/ui/QueryError";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -20,13 +23,29 @@ const COLUMNS = [
     label: "ID",
     render: (booking) => <span className="font-data text-text-secondary">{booking.code}</span>,
   },
-  { key: "customerName", label: "Customer", render: (booking) => booking.customer?.name ?? "Unknown" },
-  { key: "service", label: "Service" },
+  {
+    key: "customerName",
+    label: "Customer",
+    render: (booking) => (
+      <span className="flex items-center gap-2.5">
+        <Avatar name={booking.customer?.name ?? "?"} size={26} />
+        <span className="font-medium">{booking.customer?.name ?? "Unknown"}</span>
+      </span>
+    ),
+  },
+  { key: "service", label: "Service", render: (booking) => <ServiceLabel service={booking.service} /> },
   {
     key: "providerName",
     label: "Provider",
     render: (booking) =>
-      booking.provider?.name ?? <span className="text-text-secondary">Unassigned</span>,
+      booking.provider ? (
+        booking.provider.name
+      ) : (
+        <span className="inline-flex items-center gap-1.5 text-text-secondary">
+          <CircleDashed size={13} />
+          Unassigned
+        </span>
+      ),
   },
   {
     key: "scheduledAt",
@@ -34,7 +53,8 @@ const COLUMNS = [
     sortable: true,
     render: (booking) => (
       <span className="font-data">
-        {formatDate(booking.scheduledAt)} {formatTime(booking.scheduledAt)}
+        {formatDate(booking.scheduledAt)}
+        <span className="text-text-secondary"> {formatTime(booking.scheduledAt)}</span>
       </span>
     ),
   },
@@ -43,7 +63,7 @@ const COLUMNS = [
     label: "Amount",
     align: "right",
     sortable: true,
-    render: (booking) => <span className="font-data">{formatUSD(booking.amount)}</span>,
+    render: (booking) => <span className="font-data font-medium">{formatUSD(booking.amount)}</span>,
   },
   {
     key: "status",
@@ -86,33 +106,50 @@ export function BookingsPage() {
             sortDirection={list.sortDirection}
             onSortChange={list.onSortChange}
             isLoading={list.isLoading}
+            isFetching={list.isFetching}
+            skeletonRowCount={list.pageSize}
             emptyState={
-              <div className="flex flex-col items-center gap-3">
-                <PackageSearch size={28} className="text-text-secondary" />
-                <p className="text-[13px] text-text-secondary">
-                  {list.hasActiveFilters ? "No bookings match your filters" : "No bookings yet"}
-                </p>
-                {list.hasActiveFilters && (
-                  <Button variant="ghost" onClick={list.clearFilters}>
-                    Clear filters
-                  </Button>
-                )}
-              </div>
+              list.hasActiveFilters ? (
+                <EmptyState
+                  icon={PackageSearch}
+                  title="No bookings match these filters"
+                  description="Try another status or service, or search by a different name or booking ID."
+                  action={
+                    <Button variant="secondary" onClick={list.clearFilters}>
+                      Clear filters
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={PackageSearch}
+                  title="No bookings yet"
+                  description="Bookings appear here as soon as customers make them."
+                  action={
+                    canCreate && (
+                      <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
+                        <Plus size={14} />
+                        New booking
+                      </Button>
+                    )
+                  }
+                />
+              )
+            }
+            footer={
+              <Pagination
+                page={list.page}
+                pageSize={list.pageSize}
+                total={list.totalCount}
+                totalPages={list.totalPages}
+                onPageChange={list.setPage}
+                onPageSizeChange={list.setPageSize}
+                label="bookings"
+              />
             }
           />
         )}
       </Card>
-
-      {!list.isLoading && !list.isError && (
-        <Pagination
-          page={list.page}
-          pageSize={list.pageSize}
-          total={list.totalCount}
-          totalPages={list.totalPages}
-          onPageChange={list.setPage}
-          label="bookings"
-        />
-      )}
 
       {canCreate && (
         <BookingFormDialog

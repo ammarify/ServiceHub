@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useBookings } from "../../hooks/useBookings";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
-
-const PAGE_SIZE = 12;
+import { usePageSize } from "../../lib/usePageSize";
 
 export const STATUS_OPTIONS = ["all", "pending", "assigned", "in_progress", "completed", "cancelled"];
 
@@ -13,16 +12,17 @@ export function useBookingsList() {
   const [sortKey, setSortKey] = useState("scheduledAt");
   const [sortDirection, setSortDirection] = useState("desc");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeRaw] = usePageSize("bookings");
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const params = useMemo(() => {
-    const p = { page, limit: PAGE_SIZE, sortBy: sortKey, sortDir: sortDirection };
+    const p = { page, limit: pageSize, sortBy: sortKey, sortDir: sortDirection };
     if (statusFilter !== "all") p.status = statusFilter;
     if (serviceFilter !== "all") p.service = serviceFilter;
     if (debouncedSearch.trim()) p.search = debouncedSearch.trim();
     return p;
-  }, [page, sortKey, sortDirection, statusFilter, serviceFilter, debouncedSearch]);
+  }, [page, pageSize, sortKey, sortDirection, statusFilter, serviceFilter, debouncedSearch]);
 
   const query = useBookings(params);
   const pageItems = query.data?.items ?? [];
@@ -36,6 +36,11 @@ export function useBookingsList() {
       setSortKey(key);
       setSortDirection("desc");
     }
+    setPage(1);
+  }
+
+  function setPageSize(value) {
+    setPageSizeRaw(value);
     setPage(1);
   }
 
@@ -73,13 +78,15 @@ export function useBookingsList() {
     onSortChange,
     page,
     setPage,
-    pageSize: PAGE_SIZE,
+    pageSize,
+    setPageSize,
     totalPages,
     totalCount,
     pageItems,
     clearFilters,
     hasActiveFilters: search !== "" || statusFilter !== "all" || serviceFilter !== "all",
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     refetch: query.refetch,
   };

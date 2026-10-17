@@ -2,12 +2,15 @@ import { Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
+import { DangerZone } from "../../components/ui/DangerZone";
 import { DetailField } from "../../components/ui/DetailField";
 import { Drawer } from "../../components/ui/Drawer";
 import { QueryError } from "../../components/ui/QueryError";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { StatusBadge } from "../../components/ui/StatusBadge";
-import { useCustomer } from "../../hooks/useCustomers";
+import { useConfirm } from "../../context/ConfirmContext";
+import { useToast } from "../../context/ToastContext";
+import { useCustomer, useDeleteCustomer } from "../../hooks/useCustomers";
 import { formatDate, formatNumber, formatUSD, relativeTime } from "../../lib/formatters";
 
 function CustomerDrawerSkeleton() {
@@ -28,12 +31,42 @@ function CustomerDrawerSkeleton() {
 }
 
 export function CustomerDrawer({ customerId, open, onClose, canManage, canOpenTickets, canCreateBooking, onEdit, onNewBooking }) {
+  const toast = useToast();
+  const confirm = useConfirm();
   const { data, isLoading, isError, error, refetch } = useCustomer(customerId);
+  const deleteMutation = useDeleteCustomer();
 
   const customer = data?.customer;
   const customerBookings = data?.bookings ?? [];
   const customerTickets = data?.tickets ?? [];
   const notFound = error?.response?.status === 404;
+
+  async function handleDelete() {
+    const { _id: id, name } = customer;
+    const deleted = await confirm({
+      title: `Delete ${name}?`,
+      description: "Their profile is removed for good. This can't be undone.",
+      confirmLabel: "Delete customer",
+      pendingLabel: "Deleting…",
+      tone: "danger",
+      onConfirm: () => deleteMutation.mutateAsync(id),
+    });
+    if (deleted) {
+      toast.success(`${name} deleted.`);
+      onClose();
+    }
+  }
+
+  function historyText() {
+    const bookings = customer.totalBookings ?? 0;
+    const tickets = customer.totalTickets ?? customerTickets.length;
+    return [
+      bookings > 0 && `${formatNumber(bookings)} booking${bookings === 1 ? "" : "s"}`,
+      tickets > 0 && `${formatNumber(tickets)} ticket${tickets === 1 ? "" : "s"}`,
+    ]
+      .filter(Boolean)
+      .join(" and ");
+  }
 
   return (
     <Drawer open={open} onClose={onClose} title="Customer profile">
@@ -167,6 +200,18 @@ export function CustomerDrawer({ customerId, open, onClose, canManage, canOpenTi
                 })}
               </div>
             </div>
+          )}
+
+          {canManage && (
+            <DangerZone
+              title="Delete customer"
+              description="Removes this profile for good. Possible only while they have no bookings or tickets."
+              disabled={Boolean(historyText())}
+              disabledReason={`${customer.name} has ${historyText()} on record, so the profile stays for your records.`}
+              actionLabel="Delete customer"
+              onAction={handleDelete}
+              isPending={deleteMutation.isPending}
+            />
           )}
         </div>
       )}

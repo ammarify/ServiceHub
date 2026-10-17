@@ -2,13 +2,15 @@ import { BadgeCheck, Pencil, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
+import { DangerZone } from "../../components/ui/DangerZone";
 import { DetailField } from "../../components/ui/DetailField";
 import { Drawer } from "../../components/ui/Drawer";
 import { QueryError } from "../../components/ui/QueryError";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
-import { useProvider, useUpdateProvider } from "../../hooks/useProviders";
+import { useDeleteProvider, useProvider, useUpdateProvider } from "../../hooks/useProviders";
 import { errorMessage } from "../../lib/api";
 import { formatDate, formatNumber, formatUSD } from "../../lib/formatters";
 
@@ -31,8 +33,10 @@ function ProviderDrawerSkeleton() {
 
 export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const { data, isLoading, isError, error, refetch } = useProvider(providerId);
   const updateMutation = useUpdateProvider(providerId);
+  const deleteMutation = useDeleteProvider();
 
   const provider = data?.provider;
   const recentJobs = data?.recentBookings ?? [];
@@ -58,6 +62,24 @@ export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit })
       }
     );
   }
+
+  async function handleDelete() {
+    const { _id: id, name } = provider;
+    const deleted = await confirm({
+      title: `Delete ${name}?`,
+      description: "Their profile is removed for good. This can't be undone.",
+      confirmLabel: "Delete provider",
+      pendingLabel: "Deleting…",
+      tone: "danger",
+      onConfirm: () => deleteMutation.mutateAsync(id),
+    });
+    if (deleted) {
+      toast.success(`${name} deleted.`);
+      onClose();
+    }
+  }
+
+  const bookingCount = data?.totalBookings ?? recentJobs.length;
 
   return (
     <Drawer open={open} onClose={onClose} title="Provider profile">
@@ -178,6 +200,18 @@ export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit })
               </div>
             )}
           </div>
+
+          {canManage && (
+            <DangerZone
+              title="Delete provider"
+              description="Removes this profile for good. Possible only while they have no bookings."
+              disabled={bookingCount > 0}
+              disabledReason={`${provider.name} has ${formatNumber(bookingCount)} booking${bookingCount === 1 ? "" : "s"} on record, so the profile stays for your records. Mark them off duty to stop new jobs.`}
+              actionLabel="Delete provider"
+              onAction={handleDelete}
+              isPending={deleteMutation.isPending}
+            />
+          )}
         </div>
       )}
     </Drawer>

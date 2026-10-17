@@ -46,3 +46,21 @@ export function useCreateProvider() {
 export function useUpdateProvider(id) {
   return useProviderMutation((body) => api.patch(`/providers/${id}`, body));
 }
+
+// Only succeeds for a provider with no bookings on record (the API answers
+// 409 HAS_HISTORY otherwise, with a message saying what to do instead).
+export function useDeleteProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      await api.delete(`/providers/${id}`);
+      return id;
+    },
+    onSuccess: () => {
+      // Lists only: the open profile keeps its last data while its drawer
+      // slides shut instead of flashing "not found".
+      queryClient.invalidateQueries({ queryKey: ["providers"], predicate: (query) => typeof query.queryKey[1] !== "string" });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}

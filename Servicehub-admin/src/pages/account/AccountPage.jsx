@@ -1,3 +1,4 @@
+import { LogOut } from "lucide-react";
 import { useState } from "react";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
@@ -166,7 +167,9 @@ function SessionsCard() {
       <ConfirmDialog
         open={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
-        title="Sign out everywhere"
+        title="Sign out everywhere?"
+        icon={LogOut}
+        tone="danger"
         footer={
           <>
             <Button variant="secondary" onClick={() => setIsConfirmOpen(false)}>

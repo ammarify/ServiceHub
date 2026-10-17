@@ -5,6 +5,7 @@ import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { DataTable } from "../../components/ui/DataTable";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { Pagination } from "../../components/ui/Pagination";
 import { QueryError } from "../../components/ui/QueryError";
 import { useAuth } from "../../context/AuthContext";
@@ -22,10 +23,10 @@ const COLUMNS = [
     key: "name",
     label: "Name",
     render: (customer) => (
-      <div className="flex items-center gap-2.5">
-        <Avatar name={customer.name} size={24} />
-        <span className="text-text-primary">{customer.name}</span>
-      </div>
+      <span className="flex items-center gap-2.5">
+        <Avatar name={customer.name} size={26} />
+        <span className="font-medium text-text-primary">{customer.name}</span>
+      </span>
     ),
   },
   {
@@ -33,26 +34,27 @@ const COLUMNS = [
     label: "Phone",
     render: (customer) => <span className="font-data text-text-secondary">{customer.phone}</span>,
   },
-  { key: "area", label: "Area" },
+  { key: "area", label: "Area", render: (customer) => <span className="text-text-secondary">{customer.area}</span> },
   {
     key: "totalBookings",
     label: "Bookings",
+    align: "right",
     render: (customer) => <span className="font-data">{formatNumber(customer.totalBookings)}</span>,
   },
   {
     key: "totalSpent",
-    label: "Total Spent",
+    label: "Total spent",
     align: "right",
-    render: (customer) => <span className="font-data">{formatUSD(customer.totalSpent)}</span>,
+    render: (customer) => <span className="font-data font-medium">{formatUSD(customer.totalSpent)}</span>,
   },
   {
     key: "lastBookingAt",
-    label: "Last Booking",
+    label: "Last booking",
     render: (customer) =>
       customer.lastBookingAt ? (
         <span className="font-data">{relativeTime(customer.lastBookingAt)}</span>
       ) : (
-        <span className="font-data text-text-secondary">—</span>
+        <span className="text-text-secondary">No bookings</span>
       ),
   },
 ];
@@ -97,34 +99,50 @@ export function CustomersPage() {
             getRowKey={(customer) => customer._id}
             onRowClick={(customer) => setSelectedCustomerId(customer._id)}
             isLoading={list.isLoading}
-            skeletonRowCount={8}
+            isFetching={list.isFetching}
+            skeletonRowCount={list.pageSize}
             emptyState={
-              <div className="flex flex-col items-center gap-3">
-                <UserRoundSearch size={28} className="text-text-secondary" />
-                <p className="text-[13px] text-text-secondary">
-                  {list.hasActiveFilters ? "No customers match your search" : "No customers yet"}
-                </p>
-                {list.hasActiveFilters && (
-                  <Button variant="ghost" onClick={list.clearFilters}>
-                    Clear search
-                  </Button>
-                )}
-              </div>
+              list.hasActiveFilters ? (
+                <EmptyState
+                  icon={UserRoundSearch}
+                  title="No customers match your search"
+                  description="Search by first or last name, or by phone number."
+                  action={
+                    <Button variant="secondary" onClick={list.clearFilters}>
+                      Clear search
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={UserRoundSearch}
+                  title="No customers yet"
+                  description="Customers appear here when they book, or when you add one by hand."
+                  action={
+                    canManage && (
+                      <Button variant="primary" onClick={() => setFormState({ customer: null })}>
+                        <Plus size={14} />
+                        Add customer
+                      </Button>
+                    )
+                  }
+                />
+              )
+            }
+            footer={
+              <Pagination
+                page={list.page}
+                pageSize={list.pageSize}
+                total={list.totalCount}
+                totalPages={list.totalPages}
+                onPageChange={list.setPage}
+                onPageSizeChange={list.setPageSize}
+                label="customers"
+              />
             }
           />
         )}
       </Card>
-
-      {!list.isLoading && !list.isError && (
-        <Pagination
-          page={list.page}
-          pageSize={list.pageSize}
-          total={list.totalCount}
-          totalPages={list.totalPages}
-          onPageChange={list.setPage}
-          label="customers"
-        />
-      )}
 
       <CustomerDrawer
         customerId={drawerCustomerId}

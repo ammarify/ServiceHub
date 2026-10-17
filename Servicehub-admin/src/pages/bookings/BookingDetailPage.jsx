@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarClock, CheckCircle2, Pencil, PlayCircle, Undo2, UserRoundCog, XCircle } from "lucide-react";
+import { ArrowLeft, CalendarClock, CalendarX2, CheckCircle2, Pencil, PlayCircle, Undo2, UserRoundCog, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { RequestRefundDialog } from "../../components/refunds/RequestRefundDialog";
@@ -10,6 +10,7 @@ import { Skeleton } from "../../components/ui/Skeleton";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Textarea } from "../../components/ui/Textarea";
 import { useAuth } from "../../context/AuthContext";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { useBooking, useCancelBooking, useUpdateBookingStatus } from "../../hooks/useBookings";
 import { errorMessage } from "../../lib/api";
@@ -46,14 +47,16 @@ function CancelBookingDialog({ booking, open, onClose }) {
     <ConfirmDialog
       open
       onClose={onClose}
-      title="Cancel booking"
+      title={`Cancel booking ${booking.code}?`}
+      icon={CalendarX2}
+      tone="danger"
       onSubmit={handleConfirm}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
             Keep booking
           </Button>
-          <Button type="submit" variant="secondary" tone="danger" disabled={mutation.isPending}>
+          <Button type="submit" variant="primary" tone="danger" disabled={mutation.isPending}>
             {mutation.isPending ? "Cancelling…" : "Cancel booking"}
           </Button>
         </>
@@ -65,10 +68,7 @@ function CancelBookingDialog({ booking, open, onClose }) {
             {errorMessage(mutation.error, "Couldn't cancel this booking.")}
           </p>
         )}
-        <p>
-          Cancel booking <span className="font-data text-text-primary">{booking.code}</span>? The provider will be
-          released and this can't be undone.
-        </p>
+        <p>The provider is released from the job and the customer's booking ends. This can't be undone.</p>
         <FormField label="Reason (optional)" hint="Saved on the booking's timeline.">
           <Textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={2} maxLength={300} />
         </FormField>
@@ -90,6 +90,7 @@ export function BookingDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const [openDialog, setOpenDialog] = useState(null);
 
   const bookingQuery = useBooking(id);
@@ -142,10 +143,24 @@ export function BookingDetailPage() {
     }
   }
 
-  function changeStatus(nextStatus) {
+  async function changeStatus(nextStatus) {
+    // Completing is final: the job counts toward revenue and the booking
+    // can't be edited afterwards, so it's confirmed first.
+    if (nextStatus === "completed") {
+      const done = await confirm({
+        title: `Mark ${booking.code} completed?`,
+        description: "The job counts toward revenue and the provider's earnings, and the booking can no longer be edited.",
+        confirmLabel: "Mark completed",
+        pendingLabel: "Saving…",
+        icon: CheckCircle2,
+        onConfirm: () => statusMutation.mutateAsync(nextStatus),
+      });
+      if (done) toast.success(`${booking.code} marked completed.`);
+      return;
+    }
+
     statusMutation.mutate(nextStatus, {
-      onSuccess: (updated) =>
-        toast.success(`${updated.code} marked ${nextStatus === "completed" ? "completed" : "started"}.`),
+      onSuccess: (updated) => toast.success(`${updated.code} marked started.`),
       onError: (error) => toast.error(errorMessage(error, "Couldn't update this booking.")),
     });
   }

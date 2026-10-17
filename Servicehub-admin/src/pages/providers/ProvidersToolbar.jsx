@@ -11,7 +11,6 @@ export function ProvidersToolbar({
   setServiceFilter,
   availableOnly,
   toggleAvailableOnly,
-  totalCount,
   actions,
 }) {
   const { services } = useAppConfig();
@@ -62,12 +61,7 @@ export function ProvidersToolbar({
         </button>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="text-[13px] text-text-secondary">
-          <span className="font-data text-text-primary">{totalCount}</span> providers
-        </div>
-        {actions}
-      </div>
+      {actions && <div className="flex items-center gap-3">{actions}</div>}
     </Toolbar>
   );
 }
