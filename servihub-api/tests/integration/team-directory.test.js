@@ -83,6 +83,28 @@ describe("team invitations", () => {
   it("is super_admin only", async () => {
     expect((await manager.post("/api/team").send({ name: "Nope", email: "nope@servihub.test", role: "finance" })).status).toBe(403);
   });
+
+  it("withdraws a pending invitation, killing its link", async () => {
+    const created = await admin.post("/api/team").send({ name: "Changed Mind", email: "changed@servihub.test", role: "finance" });
+    const token = new URL(created.body.inviteUrl).searchParams.get("token");
+
+    const res = await admin.delete(`/api/team/${created.body.member._id}`);
+    expect(res.status).toBe(204);
+
+    expect(await User.exists({ email: "changed@servihub.test" })).toBeNull();
+    expect((await anonymous().post("/api/auth/reset-password/verify").send({ token })).status).toBe(400);
+  });
+
+  it("never deletes a member who has joined, or your own account", async () => {
+    const joined = await admin.delete(`/api/team/${team.manager._id}`);
+    expect(joined.status).toBe(409);
+    expect(joined.body).toMatchObject({ code: "HAS_HISTORY" });
+    expect(joined.body.message).toContain("Disable it instead");
+    expect(await User.exists({ _id: team.manager._id })).not.toBeNull();
+
+    expect((await admin.delete(`/api/team/${team.super_admin._id}`)).status).toBe(400);
+    expect((await manager.delete(`/api/team/${team.finance._id}`)).status).toBe(403);
+  });
 });
 
 describe("providers", () => {
@@ -121,7 +143,23 @@ describe("providers", () => {
     await createBooking({ provider: provider._id, status: "assigned", amount: 500 });
 
     const res = await manager.get(`/api/providers/${provider._id}`);
-    expect(res.body).toMatchObject({ earnings: 200, jobs: 2, activeBookings: 1 });
+    expect(res.body).toMatchObject({ earnings: 200, jobs: 2, activeBookings: 1, totalBookings: 3 });
+  });
+
+  it("deletes a provider without bookings, but keeps one with history", async () => {
+    const fresh = await createProvider({ name: "Fresh Hire" });
+    expect((await manager.delete(`/api/providers/${fresh._id}`)).status).toBe(204);
+    expect((await manager.get(`/api/providers/${fresh._id}`)).status).toBe(404);
+
+    const busy = await createProvider({ name: "Busy Bee" });
+    await createBooking({ provider: busy._id, status: "completed" });
+    const blocked = await manager.delete(`/api/providers/${busy._id}`);
+    expect(blocked.status).toBe(409);
+    expect(blocked.body).toMatchObject({ code: "HAS_HISTORY" });
+    expect(blocked.body.message).toBe("Busy Bee has 1 booking on record, so the profile can't be deleted. Mark them off duty instead.");
+    expect((await manager.get(`/api/providers/${busy._id}`)).status).toBe(200);
+
+    expect((await manager.delete(`/api/providers/${fresh._id}`)).status).toBe(404);
   });
 });
 
@@ -150,6 +188,22 @@ describe("customers", () => {
 
     const list = await manager.get(`/api/customers?search=${encodeURIComponent(customer.name)}`);
     expect(list.body.items[0]).toMatchObject({ totalBookings: 56, totalSpent: 550 });
+  });
+
+  it("deletes a customer without history, but keeps one with bookings or tickets", async () => {
+    const fresh = await createCustomer({ name: "New Lead" });
+    expect((await manager.delete(`/api/customers/${fresh._id}`)).status).toBe(204);
+    expect((await manager.get(`/api/customers/${fresh._id}`)).status).toBe(404);
+
+    const regular = await createCustomer({ name: "Regular Rita" });
+    const booking = await createBooking({ customer: regular._id });
+    await createBooking({ customer: regular._id });
+    await createTicket({ booking });
+
+    const blocked = await manager.delete(`/api/customers/${regular._id}`);
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.message).toBe("Regular Rita has 2 bookings and 1 support ticket on record, so the profile can't be deleted.");
+    expect((await manager.get(`/api/customers/${regular._id}`)).status).toBe(200);
   });
 });
 

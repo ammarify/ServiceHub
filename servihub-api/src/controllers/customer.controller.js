@@ -145,3 +145,29 @@ export const updateCustomer = asyncHandler(async (req, res) => {
 
   res.status(200).json(await customerDetail(customer));
 });
+
+// Only a customer with no bookings or tickets can be deleted, so no booking,
+// refund or conversation is ever left pointing at a missing person.
+export const deleteCustomer = asyncHandler(async (req, res) => {
+  const customer = await Customer.findById(req.params.id);
+  if (!customer) {
+    throw new ApiError(404, "Customer not found");
+  }
+
+  const [bookings, tickets] = await Promise.all([
+    Booking.countDocuments({ customer: customer._id }),
+    Ticket.countDocuments({ customer: customer._id }),
+  ]);
+  if (bookings + tickets > 0) {
+    const history = [
+      bookings > 0 && `${bookings} booking${bookings === 1 ? "" : "s"}`,
+      tickets > 0 && `${tickets} support ticket${tickets === 1 ? "" : "s"}`,
+    ]
+      .filter(Boolean)
+      .join(" and ");
+    throw new ApiError(409, `${customer.name} has ${history} on record, so the profile can't be deleted.`, "HAS_HISTORY");
+  }
+
+  await customer.deleteOne();
+  res.status(204).end();
+});

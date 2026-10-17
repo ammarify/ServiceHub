@@ -27,11 +27,13 @@ const ENDPOINTS = [
   { method: "get", path: `/api/providers/${FAKE_ID}`, permission: "provider.read" },
   { method: "post", path: "/api/providers", permission: "provider.manage", body: {} },
   { method: "patch", path: `/api/providers/${FAKE_ID}`, permission: "provider.manage", body: { verified: true } },
+  { method: "delete", path: `/api/providers/${FAKE_ID}`, permission: "provider.manage" },
 
   { method: "get", path: "/api/customers?limit=1", permission: "customer.read" },
   { method: "get", path: `/api/customers/${FAKE_ID}`, permission: "customer.read" },
   { method: "post", path: "/api/customers", permission: "customer.manage", body: {} },
   { method: "patch", path: `/api/customers/${FAKE_ID}`, permission: "customer.manage", body: { area: "Hyde Park" } },
+  { method: "delete", path: `/api/customers/${FAKE_ID}`, permission: "customer.manage" },
 
   { method: "get", path: "/api/refunds?limit=1", permission: "refund.read" },
   { method: "get", path: `/api/refunds/${FAKE_ID}`, permission: "refund.read" },
@@ -50,6 +52,7 @@ const ENDPOINTS = [
   { method: "post", path: `/api/team/${FAKE_ID}/invite`, permission: "team.manage" },
   { method: "patch", path: `/api/team/${FAKE_ID}/role`, permission: "team.manage", body: { role: "manager" } },
   { method: "patch", path: `/api/team/${FAKE_ID}/status`, permission: "team.manage", body: { status: "active" } },
+  { method: "delete", path: `/api/team/${FAKE_ID}`, permission: "team.manage" },
 
   { method: "get", path: "/api/search?q=a", permission: null },
   { method: "get", path: "/api/auth/me", permission: null },

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
-import { User } from "../models/index.js";
+import { PasswordToken, Session, User } from "../models/index.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { endAllSessions } from "../services/session.service.js";
@@ -127,4 +127,23 @@ export const updateTeamMemberStatus = asyncHandler(async (req, res) => {
   await endAllSessions(member._id, req.body.status === "disabled" ? "disabled" : "enabled");
 
   res.status(200).json({ member: await User.findById(member._id) });
+});
+
+// Withdraws an invitation nobody has accepted yet by deleting the account.
+// Anyone who has signed in can appear on refunds, timelines and invitations
+// they sent, so their account is disabled instead, never deleted.
+export const revokeTeamInvite = asyncHandler(async (req, res) => {
+  const member = await loadOtherMember(req, "account");
+
+  if (!member.invitePending) {
+    throw new ApiError(
+      409,
+      `${member.name} has already joined, so the account can't be deleted. Disable it instead.`,
+      "HAS_HISTORY"
+    );
+  }
+
+  await Promise.all([PasswordToken.deleteMany({ user: member._id }), Session.deleteMany({ user: member._id })]);
+  await member.deleteOne();
+  res.status(204).end();
 });
