@@ -1,10 +1,11 @@
-import { Pencil } from "lucide-react";
+import { CalendarDays, History, MapPin, Pencil, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ServiceIcon } from "../../components/ServiceIcon";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
 import { DangerZone } from "../../components/ui/DangerZone";
-import { DetailField } from "../../components/ui/DetailField";
 import { Drawer } from "../../components/ui/Drawer";
+import { InfoList, InfoRow } from "../../components/ui/InfoRow";
 import { QueryError } from "../../components/ui/QueryError";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -116,20 +117,22 @@ export function CustomerDrawer({ customerId, open, onClose, canManage, canOpenTi
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <DetailField label="Phone" mono>
+          <InfoList>
+            <InfoRow icon={Phone} label="Phone" mono>
               {customer.phone}
-            </DetailField>
-            <DetailField label="Area">{customer.area}</DetailField>
-            <DetailField label="Customer since" mono>
+            </InfoRow>
+            <InfoRow icon={MapPin} label="Area">
+              {customer.area}
+            </InfoRow>
+            <InfoRow icon={CalendarDays} label="Customer since" mono>
               {formatDate(customer.joinedAt)}
-            </DetailField>
+            </InfoRow>
             {customer.lastBookingAt && (
-              <DetailField label="Last booking" mono>
+              <InfoRow icon={History} label="Last booking" mono>
                 {relativeTime(customer.lastBookingAt)}
-              </DetailField>
+              </InfoRow>
             )}
-          </div>
+          </InfoList>
 
           {canCreateBooking && (
             <Button variant="secondary" className="w-fit" onClick={() => onNewBooking(customer)}>
@@ -155,8 +158,9 @@ export function CustomerDrawer({ customerId, open, onClose, canManage, canOpenTi
                   <Link
                     key={booking._id}
                     to={`/bookings/${booking._id}`}
-                    className="flex items-center gap-3 border-b border-border py-2.5 text-[13px] last:border-0 hover:bg-canvas"
+                    className="-mx-2 flex items-center gap-3 rounded-btn px-2 py-2 text-[13px] transition-colors hover:bg-canvas"
                   >
+                    <ServiceIcon service={booking.service} size={24} />
                     <span className="font-data w-16 shrink-0 text-text-secondary">{booking.code}</span>
                     <span className="min-w-0 flex-1 truncate text-text-secondary">{booking.service}</span>
                     <StatusBadge status={booking.status} />
