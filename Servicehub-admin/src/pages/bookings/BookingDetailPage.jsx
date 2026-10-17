@@ -1,8 +1,10 @@
-import { ArrowLeft, CalendarClock, CalendarX2, CheckCircle2, Pencil, PlayCircle, Undo2, UserRoundCog, XCircle } from "lucide-react";
+import { ArrowLeft, CalendarX2, CheckCircle2, Pencil, PlayCircle, Undo2, UserRoundCog, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { RequestRefundDialog } from "../../components/refunds/RequestRefundDialog";
+import { ServiceIcon } from "../../components/ServiceIcon";
 import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { FormField } from "../../components/ui/FormField";
 import { QueryError } from "../../components/ui/QueryError";
@@ -14,11 +16,12 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { useBooking, useCancelBooking, useUpdateBookingStatus } from "../../hooks/useBookings";
 import { errorMessage } from "../../lib/api";
-import { formatDateTime } from "../../lib/formatters";
+import { formatDateTime, formatUSD, relativeTime } from "../../lib/formatters";
 import { can } from "../../lib/permissions";
 import { BookingCustomerCard } from "./BookingCustomerCard";
 import { BookingFormDialog } from "./BookingFormDialog";
 import { BookingPaymentCard } from "./BookingPaymentCard";
+import { BookingProgress } from "./BookingProgress";
 import { BookingProviderCard } from "./BookingProviderCard";
 import { BookingTimelineCard } from "./BookingTimelineCard";
 import { ReassignProviderDialog } from "./ReassignProviderDialog";
@@ -79,9 +82,12 @@ function CancelBookingDialog({ booking, open, onClose }) {
 
 function HeaderSkeleton() {
   return (
-    <div className="flex items-center gap-3">
-      <Skeleton className="h-6 w-28" />
-      <Skeleton className="h-3 w-20" />
+    <div className="flex items-center gap-4">
+      <Skeleton className="h-12 w-12" />
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-3 w-56" />
+      </div>
     </div>
   );
 }
@@ -119,10 +125,10 @@ export function BookingDetailPage() {
   const actions = [];
   if (booking) {
     if (can(user, "booking.update") && status === "assigned") {
-      actions.push({ key: "start", label: "Mark started", icon: PlayCircle, onClick: () => changeStatus("in_progress") });
+      actions.push({ key: "start", label: "Mark started", icon: PlayCircle, primary: true, onClick: () => changeStatus("in_progress") });
     }
     if (can(user, "booking.update") && status === "in_progress") {
-      actions.push({ key: "complete", label: "Mark completed", icon: CheckCircle2, onClick: () => changeStatus("completed") });
+      actions.push({ key: "complete", label: "Mark completed", icon: CheckCircle2, primary: true, onClick: () => changeStatus("completed") });
     }
     if (can(user, "booking.reassign") && isOpen) {
       actions.push({
@@ -167,39 +173,47 @@ export function BookingDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3">
-        <Link
-          to="/bookings"
-          className="inline-flex w-fit items-center gap-1.5 text-[13px] text-text-secondary hover:text-text-primary"
-        >
-          <ArrowLeft size={14} />
-          Back to bookings
-        </Link>
+      <Link
+        to="/bookings"
+        className="inline-flex w-fit items-center gap-1.5 text-[13px] text-text-secondary hover:text-text-primary"
+      >
+        <ArrowLeft size={14} />
+        Back to bookings
+      </Link>
 
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      {/* The booking at a glance: what, when, how much, where it stands. */}
+      <Card padded={false}>
+        {/* The actions sit beside the title while they fit and move under
+            it as a group when they don't. */}
+        <div className="flex flex-wrap items-start justify-between gap-4 p-5">
           {isLoading ? (
             <HeaderSkeleton />
           ) : (
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="font-data text-[20px] font-semibold text-text-primary">{booking.code}</h1>
-                <StatusBadge status={status} />
-              </div>
-              <div className="mt-1 flex items-center gap-1.5 text-[13px] text-text-secondary">
-                <CalendarClock size={14} />
-                <span>
-                  {booking.service} · <span className="font-data">{formatDateTime(booking.scheduledAt)}</span>
-                </span>
+            <div className="flex min-w-0 max-w-full items-start gap-4">
+              <ServiceIcon service={booking.service} size={48} strong />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h1 className="font-data text-[20px] font-semibold text-text-primary">{booking.code}</h1>
+                  <StatusBadge status={status} />
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] text-text-secondary">
+                  <span>{booking.service}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-data">{formatDateTime(booking.scheduledAt)}</span>
+                  <span className="font-data">({relativeTime(booking.scheduledAt)})</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-data text-text-primary">{formatUSD(booking.amount)}</span>
+                </div>
               </div>
             </div>
           )}
 
           {actions.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex max-w-full shrink-0 flex-wrap gap-2">
               {actions.map((action) => (
                 <Button
                   key={action.key}
-                  variant={action.tone === "danger" ? "ghost" : "secondary"}
+                  variant={action.tone === "danger" ? "ghost" : action.primary ? "primary" : "secondary"}
                   tone={action.tone ?? "default"}
                   onClick={action.onClick}
                   disabled={statusMutation.isPending && (action.key === "start" || action.key === "complete")}
@@ -211,7 +225,11 @@ export function BookingDetailPage() {
             </div>
           )}
         </div>
-      </div>
+
+        <div className="border-t border-border px-5 py-5">
+          {isLoading ? <Skeleton className="h-10 w-full" /> : <BookingProgress booking={booking} />}
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 min-[900px]:grid-cols-3">
         <div className="min-[900px]:col-span-2">

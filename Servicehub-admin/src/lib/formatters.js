@@ -79,6 +79,19 @@ export function formatShortWeekdayDate(date) {
   return shortWeekdayDateFormatter.format(new Date(date));
 }
 
+const dayTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+// "Oct 17, 4:00 PM": a moment in a step-by-step history, where the year
+// would only add noise.
+export function formatDayTime(date) {
+  return dayTimeFormatter.format(new Date(date));
+}
+
 const monthFormatter = new Intl.DateTimeFormat("en-US", { month: "long" });
 
 // "October"
