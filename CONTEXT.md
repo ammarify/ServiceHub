@@ -1,9 +1,9 @@
 # ServiHub — Project Context
 
-> Updated 2026-10-16, at the end of the development phase (branch
-> `feat/complete-development`, merged into `demo/bug-showcase` through a pull
-> request). It replaces the 2026-10-14 scan of the original code; what that
-> scan found and how each item was resolved is in [§13](#13-issue-log).
+> Updated 2026-10-17, after the UI polish pass (branch `feat/ui-polish`, on
+> top of the development phase in `feat/complete-development`). It replaces
+> the 2026-10-14 scan of the original code; what that scan found and how each
+> item was resolved is in [§13](#13-issue-log).
 >
 > The code is the source of truth. Detailed references:
 > [README.md](README.md) (setup, demo, deployment),
@@ -65,6 +65,21 @@ How that was verified on 2026-10-16:
   8-second access tokens, Copilot role gating and guardrail display, global
   search and deep links, dashboard ranges, dark mode, a 390 px phone layout,
   and the 404 page.
+
+**The UI polish pass (2026-10-17)** made the app presentation-ready before
+deployment: the sign-in form sits on the right of a product panel; the
+dashboard was rebuilt (greeting with live status, KPI tiles with sparklines,
+a bookings/revenue trend, status shares, list cards with quick actions);
+tables and pagination were redesigned (total records, page numbers,
+previous/next icons, rows per page); every destructive or state-changing
+action asks for confirmation and reports its result in a toast; providers,
+customers and pending invitations can be deleted when they have no history;
+a skippable, role-aware guided tour runs after the first sign-in; and the
+support conversation and customer simulator became a modern chat. Checked
+with API tests (323), app tests (88), lint and build, `audit:rbac` (38
+endpoints × 4 roles + anonymous), `e2e` (36 steps pass), and a browser walk
+through every screen, dialog and role at desktop, tablet and phone widths in
+light and dark mode.
 
 What remains is outside development: deploying it and the scale-out and
 hardening items in §14.
@@ -158,12 +173,12 @@ Four staff roles: `super_admin`, `manager`, `support_agent`, `finance`.
 | `booking.create` | ✅ | ✅ | ❌ | ❌ |
 | `booking.update` (edit, start, complete) | ✅ | ✅ | ❌ | ❌ |
 | `booking.reassign` (reassign, cancel) | ✅ | ✅ | ❌ | ❌ |
-| `provider.read` / `provider.manage` | ✅ | ✅ | ❌ | ❌ |
-| `customer.read` / `customer.manage` | ✅ | ✅ | ❌ | ❌ |
+| `provider.read` / `provider.manage` (incl. delete) | ✅ | ✅ | ❌ | ❌ |
+| `customer.read` / `customer.manage` (incl. delete) | ✅ | ✅ | ❌ | ❌ |
 | `refund.read` / `refund.request` | ✅ | ✅ | ✅ | ✅ |
 | `refund.approve` | ✅ | ✅ | ❌ | ✅ |
 | `ticket.read` (incl. AI analyze) / `ticket.reply` / `ticket.resolve` | ✅ | ✅ | ✅ | ❌ |
-| `team.manage` | ✅ | ❌ | ❌ | ❌ |
+| `team.manage` (incl. withdrawing invitations) | ✅ | ❌ | ❌ | ❌ |
 | search, own profile, own password | ✅ | ✅ | ✅ | ✅ |
 
 Pages: Dashboard `dashboard.read`, Bookings `booking.read`, Support
@@ -181,8 +196,10 @@ Role-dependent details:
   profile" links).
 - The Copilot only offers actions the role can take and the booking still
   allows (no "Reassign" for support agents or once work has started).
-- Nobody can change their own role or status, and the last active super admin
-  can't be demoted or disabled.
+- Nobody can change their own role or status (or delete their own account),
+  and the last active super admin can't be demoted or disabled.
+- The guided tour is built from the same permissions, so it only points at
+  pages the role can open.
 
 ---
 
@@ -228,7 +245,8 @@ password.
 - Errors: `{ message, code?, errors? }`. `errors` maps fields to messages on
   validation 400s; `code` is machine-readable (`AUTH_REQUIRED`,
   `TOKEN_EXPIRED`, `SESSION_REVOKED`, `SESSION_EXPIRED`, `ACCOUNT_DISABLED`,
-  `FORBIDDEN`, `FEATURE_DISABLED`, `DUPLICATE`, ...; table in README-API.md).
+  `FORBIDDEN`, `FEATURE_DISABLED`, `DUPLICATE`, `HAS_HISTORY`, ...; table in
+  README-API.md).
   Rule violations are 409 with a message the app shows as is.
 
 ### 6.2 Routes
@@ -238,11 +256,11 @@ password.
 | `GET /health` | `{ status, db, uptime }`, 503 while the database is down | public |
 | `GET /config` | demo mode, Google client id, AI/email availability, service catalogue, time zone | public |
 | `/auth` | login (+ remember), Google, demo login, refresh (rotating), logout, logout-all, me, update profile, change password, forgot / verify / reset password | per route |
-| `/team` | roster, invite (`POST /`), resend invite, change role, enable/disable | `team.manage` |
-| `/dashboard/summary` | KPIs, trend, status breakdown, recent bookings, open tickets, pending refunds; `range` = today/week/month, `tz` | `dashboard.read` |
+| `/team` | roster, invite (`POST /`), resend invite, withdraw a pending invite (`DELETE /:id`), change role, enable/disable | `team.manage` |
+| `/dashboard/summary` | KPIs, daily trend (bookings and revenue), status breakdown, recent bookings, open tickets, pending refunds; `range` = today/week/month, `tz` | `dashboard.read` |
 | `/bookings` | list/filter/sort, detail with refund summary, create, edit, start/complete, reassign, cancel | `booking.*` |
-| `/providers` | list/filter, profile with earnings and jobs, create, edit | `provider.*` |
-| `/customers` | list with lifetime totals, profile with bookings and tickets, create, edit | `customer.*` |
+| `/providers` | list/filter, profile with earnings and jobs, create, edit, delete (no bookings only) | `provider.*` |
+| `/customers` | list with lifetime totals, profile with bookings and tickets, create, edit, delete (no bookings or tickets only) | `customer.*` |
 | `/refunds` | list with counts, detail, request, decide (with note) | `refund.*` |
 | `/tickets` | staff: list, detail, reply, status, priority, AI analyze; simulator: options, open, resume, read, post | `ticket.*` / simulator token |
 | `/search?q=` | bookings, customers, tickets (5 each), role-filtered | signed in |
@@ -310,6 +328,11 @@ panel explains that the Copilot isn't configured.
   high.
 - **Team:** invitations and resets are single-use hashed tokens (7 days /
   1 hour); a new link invalidates the previous one.
+- **Deleting never orphans history:** a provider can be deleted only with no
+  bookings, a customer only with no bookings or tickets, a team member only
+  while their invitation is pending (joined members are disabled instead);
+  bookings are cancelled, never deleted. Refusals are 409 `HAS_HISTORY` with
+  a message saying what to do instead.
 
 ### 6.7 Rate limits
 
@@ -348,7 +371,7 @@ All models use `timestamps` and no `__v`.
 
 | Path | Page | Access |
 |---|---|---|
-| `/login` | email/password, "Keep me logged in", Google (when configured), demo access (demo mode) | signed out |
+| `/login` | product panel on the left, sign-in form on the right: email/password (show/hide), "Keep me logged in", Google (when configured), demo accounts per role (demo mode) | signed out |
 | `/forgot-password` | request a reset link | signed out |
 | `/reset-password?token=` | set a password from a reset or invitation link | anyone |
 | `/dashboard`, `/bookings`, `/bookings/:id`, `/providers`, `/customers`, `/support`, `/refunds`, `/settings` | the app, inside `AppLayout` | signed in + page permission |
@@ -372,7 +395,9 @@ Drawers and selections are deep-linkable: `/customers?customer=<id>`,
   handshake is refused for an expired token it refreshes the session and
   reconnects. **RealtimeBridge** turns socket events into query invalidations,
   notifications and toasts; **NotificationContext** keeps the bell's list per
-  user in localStorage; **ToastContext** shows action results.
+  user in localStorage; **ToastContext** shows action results;
+  **ConfirmContext** (`useConfirm()`) is the one confirmation dialog for
+  destructive actions; **TourContext** runs the guided tour.
 - **Data** goes through TanStack Query hooks in `hooks/` with structured keys
   (`["bookings", "list", params]`, `["bookings", "detail", id]`, ...);
   mutations invalidate the queries they affect.
@@ -384,24 +409,47 @@ Drawers and selections are deep-linkable: `/customers?customer=<id>`,
 
 ## 9. Features
 
-- **Sign-in and account:** email/password with "Keep me logged in", Google
-  for existing staff, demo access, forgot/reset password by email link,
-  profile name, change password, sign out everywhere, silent session
+- **Sign-in and account:** a product panel beside the sign-in form (form on
+  the right), email/password with show/hide and "Keep me logged in", Google
+  for existing staff, demo accounts per role, forgot/reset password by email
+  link, profile name, change password, sign out everywhere, silent session
   refresh, clear notices when a session ends.
-- **Dashboard:** range picker (today / this week / this month, viewer's time
-  zone) with KPI cards and deltas (bookings, revenue, active tickets,
-  available providers), booking trend chart, bookings by status, recent
-  bookings, open tickets, pending refunds, each by role.
+- **Guided tour:** after the first sign-in in a browser, a short spotlight
+  tour of what the role can do (welcome, navigation, search, the role's
+  pages, notifications, period picker, profile menu). Skippable at any step
+  (button, close or Escape), remembered per user, and replayable from the
+  profile menu ("Take the tour").
+- **Dashboard:** greeting with the date and a live-updates indicator, quick
+  actions (new booking, new refund, by permission), range picker (today /
+  this week / this month, viewer's time zone), KPI tiles with deltas
+  (bookings and revenue with daily sparklines, active tickets, available
+  providers with a fleet meter), a daily trend (7, 14 or 30 days by period)
+  switchable between bookings and revenue, with tooltips and an accessible
+  table, bookings by status with shares, recent bookings, open tickets and
+  pending refunds, each by role.
+- **Tables everywhere:** avatars and service icons, sortable headers,
+  keyboard-openable rows, designed empty states, and pagination with the
+  total ("Showing 1–10 of 55 bookings"), page numbers, previous/next icons
+  and rows per page (remembered per list).
+- **Confirmations and toasts:** delete, cancel, complete, approve/reject,
+  disable, withdraw invitation and sign out everywhere ask first in a
+  confirmation dialog; every create, update, delete and status change
+  confirms its result in a toast (with a dismiss button and a countdown
+  that pauses on hover).
 - **Bookings:** server-side search, status tabs, service filter, sort,
   pagination; new booking (also from a customer's profile); detail page with
   timeline, customer, provider and payment cards; edit, mark started, mark
-  completed, reassign, cancel with a reason, request refund.
+  completed, reassign, cancel with a reason, request refund. Bookings are
+  cancelled, never deleted.
 - **Providers / customers:** searchable directories, profile drawers with
-  stats and history, add and edit.
-- **Support center:** queue (Open / In Progress / Resolved) with unanswered
-  and analyzed markers, live conversation with typing indicators, start
-  working, mark resolved, reopen, escalate; responsive drawers on small
-  screens.
+  stats and history, add and edit, and delete for records with no history
+  (otherwise the profile explains why not and what to do instead).
+- **Support center:** inbox with a filter, Open / In progress / Resolved
+  tabs, last-message previews, unread and analyzed markers; a chat-style
+  conversation (bubbles per side, grouped by sender, day separators, typing
+  bubble, "new messages" jump); a composer with quick replies and
+  Ctrl/Cmd + Enter; start working, mark resolved, reopen, escalate;
+  responsive drawers on small screens.
 - **AI Copilot:** analyze / re-analyze, summary, sentiment, refund eligibility
   with amount, policy adjustments, suggested reply with "Insert into
   composer", role- and state-aware actions (request refund prefilled,
@@ -410,14 +458,15 @@ Drawers and selections are deep-linkable: `/customers?customer=<id>`,
   request with the refundable balance shown, detail drawer, approve/reject
   with an optional note, live updates.
 - **Settings → Team:** roster with last sign-in and pending invites, add
-  member (invitation link, emailed when configured), resend invitation,
-  change role, enable/disable.
+  member (invitation link, emailed when configured), resend or withdraw an
+  invitation, change role, enable/disable (with confirmation).
 - **Notifications:** bell with unread count for new tickets, customer
   replies, refund requests (approvers) and decisions (requester).
 - **Global search:** Ctrl/Cmd + K, bookings / customers / tickets, keyboard
   navigation, opens the exact record.
-- **Customer simulator:** pick a customer, resume an open ticket or start one
-  on a booking, live chat with typing.
+- **Customer simulator:** a customer-style chat widget (clearly labelled as
+  a demo): pick a customer, resume an open ticket or start one on a booking,
+  live chat with typing, light and dark.
 
 ---
 
@@ -461,7 +510,7 @@ availability, services, time zone) comes from `GET /api/config` at runtime.
 | Command | Where | What |
 |---|---|---|
 | `npm test` | `servihub-api` | Unit + integration tests. Integration tests use `MONGODB_TEST_URI` or download MongoDB via mongodb-memory-server; each file gets its own database. |
-| `npm test` | `Servicehub-admin` | Component and logic tests (permissions, formatters, the refresh interceptor, dialogs, Copilot gating, sign-in) |
+| `npm test` | `Servicehub-admin` | Component and logic tests (permissions, formatters, the refresh interceptor, dialogs, confirmations and toasts, tables and pagination, the guided tour, deletes, Copilot gating, sign-in and reset links) |
 | `npm run lint` | both | ESLint flat config |
 | `npm run build` | `Servicehub-admin` | Production build to `dist/` |
 | `npm run seed` | `servihub-api` | Wipe and reseed |
@@ -521,6 +570,19 @@ files, set `MONGODB_URI` and two JWT secrets, `npm install` in both apps,
   `SUPER_ADMIN`); they now read IN PROGRESS, OFF DUTY and Super Admin.
 - A blank optional value in `.env` (as in `.env.example`) stopped the API from
   starting; blanks now mean "not set".
+
+### 13.3 Found and fixed during the UI polish pass (2026-10-17)
+
+- The bookings list returned `provider: {}` for unassigned bookings (an
+  empty projected sub-document); it is now `null`, and the list shows
+  "Unassigned".
+- A reset or invitation link cut short when copied showed the raw
+  validation message (`token: Too small: ...`); it now reads "This link is
+  invalid or has expired. Request a new one."
+- Team row menus were clipped by the table's scroll container; they now
+  open in a layer above the page and flip upwards near the bottom.
+- On phones the Settings "Add member" button wrapped onto two lines; the
+  header now stacks.
 
 ---
 

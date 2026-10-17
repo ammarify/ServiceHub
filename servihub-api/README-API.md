@@ -29,6 +29,7 @@ and `limit` (default 20, max 50).
 | `FORBIDDEN` | 403 | Signed in, but the role lacks the permission. |
 | `FEATURE_DISABLED` | 503 | An optional integration (Groq, Google) isn't configured. |
 | `DUPLICATE` | 409 | A unique value (email, phone) is already taken. |
+| `HAS_HISTORY` | 409 | A delete was refused because the record has history (bookings, tickets, or a member who has already joined). The message says what to do instead. |
 | `INVALID_PASSWORD_TOKEN` | 400 | Reset/invite link is invalid, used or expired. |
 
 Permission names (`booking.read`, `team.manage`, ...) refer to
@@ -80,9 +81,10 @@ Runtime settings the sign-in page needs before anyone is signed in:
 | POST | `/:id/invite` | — | Issues a new invitation link (the previous one stops working). |
 | PATCH | `/:id/role` | `{ role }` | Signs the member out everywhere so their next session matches the new role. |
 | PATCH | `/:id/status` | `{ status: "active" \| "disabled" }` | Disabling ends every session and live socket at once. |
+| DELETE | `/:id` | — | Withdraws a **pending** invitation: deletes the account and its invitation link → `204`. A member who has already joined is never deleted (409 `HAS_HISTORY`; disable them instead). |
 
-You can't change your own role or status (400), and the last active
-super_admin can't be demoted or disabled (409).
+You can't change your own role or status or delete your own account (400),
+and the last active super_admin can't be demoted or disabled (409).
 
 ---
 
@@ -99,10 +101,10 @@ previous period.
   kpis: { bookings, bookingsDelta, revenue, revenueDelta,
           availableProviders, totalProviders,
           activeTickets?, newTickets?, newTicketsDelta? },   // ticket.read only
-  trend: [{ date: "YYYY-MM-DD", count }],                   // 7 / 14 / 30 days
+  trend: [{ date: "YYYY-MM-DD", count, revenue }],          // 7 / 14 / 30 days; revenue = completed jobs
   statusBreakdown: [{ status, count }],                      // bookings scheduled in the period
   recentBookings: Booking[],
-  openTickets?: Ticket[],                                    // ticket.read only
+  openTickets?: Ticket[],                                    // ticket.read only, with customer { name }
   pendingRefunds?: { count, total, items },                  // refund.read only
 }
 ```
@@ -113,7 +115,7 @@ previous period.
 
 | Method | Path | Guard | Notes |
 |---|---|---|---|
-| GET | `/` | `booking.read` | Query: `status`, `service`, `search` (code or customer name), `customerId`, `providerId`, `sortBy` (`scheduledAt`\|`amount`\|`createdAt`), `sortDir`. |
+| GET | `/` | `booking.read` | Query: `status`, `service`, `search` (code or customer name), `customerId`, `providerId`, `sortBy` (`scheduledAt`\|`amount`\|`createdAt`), `sortDir`. Items carry `customer` and `provider` as `{ _id, name, phone }`; `provider` is `null` while the booking is unassigned. |
 | GET | `/:id` | `booking.read` | Customer and provider populated, plus `refundSummary { approvedTotal, pendingTotal, refundable }` and `refunds`. Every mutation below returns this same shape. |
 | POST | `/` | `booking.create` | `{ customerId, service, scheduledAt, amount, address, providerId? }` → `201`. `pending`, or `assigned` when a provider is given. |
 | PATCH | `/:id` | `booking.update` | `{ scheduledAt?, amount?, address? }`. Pending/assigned only. The amount can't go below refunds already approved or pending. |
@@ -131,9 +133,10 @@ change is recorded on the booking's `timeline` with the staff member's name.
 | Method | Path | Guard | Notes |
 |---|---|---|---|
 | GET | `/` | `provider.read` | Query: `service`, `availableOnly` (`"true"`\|`"false"`), `search` (name). |
-| GET | `/:id` | `provider.read` | `{ provider, earnings, jobs, activeBookings, recentBookings }` (earnings and jobs from completed bookings). |
+| GET | `/:id` | `provider.read` | `{ provider, earnings, jobs, activeBookings, totalBookings, recentBookings }` (earnings and jobs from completed bookings; `totalBookings` counts every booking ever assigned). |
 | POST | `/` | `provider.manage` | `{ name, phone, area, services[], isAvailable?, verified? }` |
 | PATCH | `/:id` | `provider.manage` | Any of the fields above. |
+| DELETE | `/:id` | `provider.manage` | `204`. Only a provider with no bookings on record (409 `HAS_HISTORY` otherwise: bookings, earnings and refunds point at the profile; mark them off duty instead). |
 
 ## Customers (`/customers`)
 
@@ -143,6 +146,10 @@ change is recorded on the booking's `timeline` with the staff member's name.
 | GET | `/:id` | `customer.read` | `{ customer, bookings, tickets }`. Totals cover the whole history; the lists are the latest 50. |
 | POST | `/` | `customer.manage` | `{ name, phone, area }`. 409 `DUPLICATE` if the phone is taken. |
 | PATCH | `/:id` | `customer.manage` | Any of the fields above. |
+| DELETE | `/:id` | `customer.manage` | `204`. Only a customer with no bookings and no support tickets (409 `HAS_HISTORY` otherwise). |
+
+Bookings are never deleted: they are cancelled, so revenue, refunds and
+timelines stay intact.
 
 ---
 
@@ -178,7 +185,7 @@ ticket returns a **token scoped to that one ticket** (12 h), required as the
 
 | Method | Path | Guard | Notes |
 |---|---|---|---|
-| GET | `/` | `ticket.read` | Query: `status`, `priority`. Items include `unanswered` and `hasAnalysis`. |
+| GET | `/` | `ticket.read` | Query: `status`, `priority`. Items include `unanswered`, `hasAnalysis` and a `lastMessage { from, text, at }` preview (text capped at 140 characters). |
 | GET | `/:id` | `ticket.read` | Booking (with provider) and customer populated, plus any stored `aiAnalysis`. |
 | POST | `/:id/messages` | `ticket.reply` | `{ text }` (1–2000 chars) → `201 { message, status }`. The first reply moves an open ticket to `in_progress`. |
 | PATCH | `/:id/status` | `ticket.resolve` | `{ status: "open" \| "in_progress" \| "resolved" }` |
