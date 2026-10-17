@@ -1,9 +1,10 @@
-import { Check, Plus, Star, UserRoundSearch } from "lucide-react";
+import { BadgeCheck, Plus, Star, UserRoundSearch } from "lucide-react";
 import { useState } from "react";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { DataTable } from "../../components/ui/DataTable";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { Pagination } from "../../components/ui/Pagination";
 import { QueryError } from "../../components/ui/QueryError";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -37,10 +38,11 @@ const COLUMNS = [
     key: "name",
     label: "Name",
     render: (provider) => (
-      <div className="flex items-center gap-2.5">
-        <Avatar name={provider.name} size={24} />
-        <span className="text-text-primary">{provider.name}</span>
-      </div>
+      <span className="flex items-center gap-2.5">
+        <Avatar name={provider.name} size={26} />
+        <span className="font-medium text-text-primary">{provider.name}</span>
+        {provider.verified && <BadgeCheck size={14} className="shrink-0 text-success" aria-label="Verified" />}
+      </span>
     ),
   },
   {
@@ -48,13 +50,13 @@ const COLUMNS = [
     label: "Services",
     render: (provider) => <ServicesCell services={provider.services} />,
   },
-  { key: "area", label: "Area" },
+  { key: "area", label: "Area", render: (provider) => <span className="text-text-secondary">{provider.area}</span> },
   {
     key: "rating",
     label: "Rating",
     render: (provider) => (
       <span className="font-data inline-flex items-center gap-1">
-        <Star size={12} className="shrink-0 text-text-secondary" />
+        <Star size={12} className="shrink-0 fill-current text-text-secondary" />
         {provider.rating.toFixed(1)}
       </span>
     ),
@@ -62,17 +64,8 @@ const COLUMNS = [
   {
     key: "jobsCompleted",
     label: "Jobs",
+    align: "right",
     render: (provider) => <span className="font-data">{formatNumber(provider.jobsCompleted)}</span>,
-  },
-  {
-    key: "verified",
-    label: "Verified",
-    render: (provider) =>
-      provider.verified ? (
-        <Check size={14} className="text-success" aria-label="Verified" />
-      ) : (
-        <span className="text-text-secondary">—</span>
-      ),
   },
   {
     key: "isAvailable",
@@ -119,34 +112,50 @@ export function ProvidersPage() {
             getRowKey={(provider) => provider._id}
             onRowClick={(provider) => setSelectedProviderId(provider._id)}
             isLoading={list.isLoading}
-            skeletonRowCount={6}
+            isFetching={list.isFetching}
+            skeletonRowCount={list.pageSize}
             emptyState={
-              <div className="flex flex-col items-center gap-3">
-                <UserRoundSearch size={28} className="text-text-secondary" />
-                <p className="text-[13px] text-text-secondary">
-                  {list.hasActiveFilters ? "No providers match your filters" : "No providers yet"}
-                </p>
-                {list.hasActiveFilters && (
-                  <Button variant="ghost" onClick={list.clearFilters}>
-                    Clear filters
-                  </Button>
-                )}
-              </div>
+              list.hasActiveFilters ? (
+                <EmptyState
+                  icon={UserRoundSearch}
+                  title="No providers match these filters"
+                  description="Try another service, or include providers who are off duty."
+                  action={
+                    <Button variant="secondary" onClick={list.clearFilters}>
+                      Clear filters
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={UserRoundSearch}
+                  title="No providers yet"
+                  description="Add the people who carry out your jobs so bookings can be assigned to them."
+                  action={
+                    canManage && (
+                      <Button variant="primary" onClick={() => setFormState({ provider: null })}>
+                        <Plus size={14} />
+                        Add provider
+                      </Button>
+                    )
+                  }
+                />
+              )
+            }
+            footer={
+              <Pagination
+                page={list.page}
+                pageSize={list.pageSize}
+                total={list.totalCount}
+                totalPages={list.totalPages}
+                onPageChange={list.setPage}
+                onPageSizeChange={list.setPageSize}
+                label="providers"
+              />
             }
           />
         )}
       </Card>
-
-      {!list.isLoading && !list.isError && (
-        <Pagination
-          page={list.page}
-          pageSize={list.pageSize}
-          total={list.totalCount}
-          totalPages={list.totalPages}
-          onPageChange={list.setPage}
-          label="providers"
-        />
-      )}
 
       <ProviderDrawer
         providerId={drawerProviderId}

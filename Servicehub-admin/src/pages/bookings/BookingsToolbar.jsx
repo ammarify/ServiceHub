@@ -21,7 +21,6 @@ export function BookingsToolbar({
   setStatusFilter,
   serviceFilter,
   setServiceFilter,
-  totalCount,
   actions,
 }) {
   const { services } = useAppConfig();
@@ -77,12 +76,7 @@ export function BookingsToolbar({
         </select>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="text-[13px] text-text-secondary">
-          <span className="font-data text-text-primary">{totalCount}</span> bookings
-        </div>
-        {actions}
-      </div>
+      {actions && <div className="flex items-center gap-3">{actions}</div>}
     </Toolbar>
   );
 }

@@ -34,6 +34,7 @@ export function NotificationsMenu() {
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
+        data-tour="notifications"
         className="relative flex h-7 w-7 items-center justify-center rounded-btn text-text-secondary hover:bg-surface"
       >
         <Bell size={16} />
@@ -44,7 +45,7 @@ export function NotificationsMenu() {
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 top-full z-40 mt-2 flex max-h-[min(480px,calc(100vh-5rem))] w-[min(360px,calc(100vw-2rem))] flex-col rounded-card border border-border bg-surface shadow-card"
+          className="absolute right-0 top-full z-40 mt-2 flex max-h-[min(480px,calc(100vh-5rem))] w-[min(360px,calc(100vw-2rem))] flex-col rounded-card border border-border bg-surface shadow-pop"
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">

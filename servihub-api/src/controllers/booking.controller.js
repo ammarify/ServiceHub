@@ -17,7 +17,14 @@ const LIST_PROJECTION = {
   createdAt: 1,
   updatedAt: 1,
   customer: { _id: "$customer._id", name: "$customer.name", phone: "$customer.phone" },
-  provider: { _id: "$provider._id", name: "$provider.name", phone: "$provider.phone" },
+  // null for an unassigned booking (a plain sub-document would come back as {}).
+  provider: {
+    $cond: [
+      { $ifNull: ["$provider._id", false] },
+      { _id: "$provider._id", name: "$provider.name", phone: "$provider.phone" },
+      null,
+    ],
+  },
 };
 
 const DETAIL_POPULATE = [

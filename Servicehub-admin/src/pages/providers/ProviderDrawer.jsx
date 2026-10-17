@@ -1,14 +1,17 @@
-import { BadgeCheck, Pencil, Star } from "lucide-react";
+import { BadgeCheck, BriefcaseBusiness, CalendarClock, CalendarDays, MapPin, Pencil, Phone, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ServiceIcon } from "../../components/ServiceIcon";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
-import { DetailField } from "../../components/ui/DetailField";
+import { DangerZone } from "../../components/ui/DangerZone";
 import { Drawer } from "../../components/ui/Drawer";
+import { InfoList, InfoRow } from "../../components/ui/InfoRow";
 import { QueryError } from "../../components/ui/QueryError";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
-import { useProvider, useUpdateProvider } from "../../hooks/useProviders";
+import { useDeleteProvider, useProvider, useUpdateProvider } from "../../hooks/useProviders";
 import { errorMessage } from "../../lib/api";
 import { formatDate, formatNumber, formatUSD } from "../../lib/formatters";
 
@@ -31,8 +34,10 @@ function ProviderDrawerSkeleton() {
 
 export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const { data, isLoading, isError, error, refetch } = useProvider(providerId);
   const updateMutation = useUpdateProvider(providerId);
+  const deleteMutation = useDeleteProvider();
 
   const provider = data?.provider;
   const recentJobs = data?.recentBookings ?? [];
@@ -58,6 +63,24 @@ export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit })
       }
     );
   }
+
+  async function handleDelete() {
+    const { _id: id, name } = provider;
+    const deleted = await confirm({
+      title: `Delete ${name}?`,
+      description: "Their profile is removed for good. This can't be undone.",
+      confirmLabel: "Delete provider",
+      pendingLabel: "Deleting…",
+      tone: "danger",
+      onConfirm: () => deleteMutation.mutateAsync(id),
+    });
+    if (deleted) {
+      toast.success(`${name} deleted.`);
+      onClose();
+    }
+  }
+
+  const bookingCount = data?.totalBookings ?? recentJobs.length;
 
   return (
     <Drawer open={open} onClose={onClose} title="Provider profile">
@@ -95,7 +118,11 @@ export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit })
             <div className="mb-2 text-[12px] text-text-secondary">Services</div>
             <div className="flex flex-wrap gap-1.5">
               {provider.services.map((service) => (
-                <span key={service} className="rounded-btn border border-border px-2 py-1 text-[12px] text-text-primary">
+                <span
+                  key={service}
+                  className="inline-flex items-center gap-1.5 rounded-btn border border-border py-1 pl-1 pr-2 text-[12px] text-text-primary"
+                >
+                  <ServiceIcon service={service} size={20} />
                   {service}
                 </span>
               ))}
@@ -124,21 +151,23 @@ export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit })
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <DetailField label="Phone" mono>
+          <InfoList>
+            <InfoRow icon={Phone} label="Phone" mono>
               {provider.phone}
-            </DetailField>
-            <DetailField label="Area">{provider.area}</DetailField>
-            <DetailField label="Active bookings" mono>
+            </InfoRow>
+            <InfoRow icon={MapPin} label="Area">
+              {provider.area}
+            </InfoRow>
+            <InfoRow icon={CalendarClock} label="Active bookings" mono>
               {formatNumber(data.activeBookings ?? 0)}
-            </DetailField>
-            <DetailField label="Lifetime jobs" mono>
+            </InfoRow>
+            <InfoRow icon={BriefcaseBusiness} label="Lifetime jobs" mono>
               {formatNumber(provider.jobsCompleted)}
-            </DetailField>
-            <DetailField label="Joined" mono>
+            </InfoRow>
+            <InfoRow icon={CalendarDays} label="Joined" mono>
               {formatDate(provider.joinedAt)}
-            </DetailField>
-          </div>
+            </InfoRow>
+          </InfoList>
 
           {canManage && (
             <div className="flex flex-wrap gap-2">
@@ -163,8 +192,9 @@ export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit })
                   <Link
                     key={booking._id}
                     to={`/bookings/${booking._id}`}
-                    className="flex items-center gap-3 border-b border-border py-2.5 text-[13px] last:border-0 hover:bg-canvas"
+                    className="-mx-2 flex items-center gap-3 rounded-btn px-2 py-2 text-[13px] transition-colors hover:bg-canvas"
                   >
+                    <ServiceIcon service={booking.service} size={24} />
                     <span className="font-data w-16 shrink-0 text-text-secondary">{booking.code}</span>
                     <span className="min-w-0 flex-1 truncate text-text-primary">
                       {booking.customer?.name ?? "Unknown"}
@@ -178,6 +208,18 @@ export function ProviderDrawer({ providerId, open, onClose, canManage, onEdit })
               </div>
             )}
           </div>
+
+          {canManage && (
+            <DangerZone
+              title="Delete provider"
+              description="Removes this profile for good. Possible only while they have no bookings."
+              disabled={bookingCount > 0}
+              disabledReason={`${provider.name} has ${formatNumber(bookingCount)} booking${bookingCount === 1 ? "" : "s"} on record, so the profile stays for your records. Mark them off duty to stop new jobs.`}
+              actionLabel="Delete provider"
+              onAction={handleDelete}
+              isPending={deleteMutation.isPending}
+            />
+          )}
         </div>
       )}
     </Drawer>

@@ -15,7 +15,7 @@ export function RangePicker() {
   const current = RANGE_OPTIONS.find((option) => option.value === range);
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" data-tour="range">
       <Button
         variant="secondary"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -31,7 +31,7 @@ export function RangePicker() {
         <ul
           role="listbox"
           aria-label="Dashboard period"
-          className="absolute right-0 top-full z-40 mt-2 min-w-[160px] rounded-card border border-border bg-surface p-1 shadow-card"
+          className="absolute right-0 top-full z-40 mt-2 min-w-[160px] rounded-card border border-border bg-surface p-1 shadow-pop"
         >
           {RANGE_OPTIONS.map((option) => (
             <li key={option.value} role="option" aria-selected={option.value === range}>

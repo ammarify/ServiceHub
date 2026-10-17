@@ -6,6 +6,7 @@ import {
   createTeamMember,
   listTeam,
   resendTeamInvite,
+  revokeTeamInvite,
   updateTeamMemberRole,
   updateTeamMemberStatus,
 } from "../controllers/team.controller.js";
@@ -40,5 +41,8 @@ router.patch(
   validate(updateTeamMemberStatusBodySchema, "body"),
   updateTeamMemberStatus
 );
+
+// Withdraws a pending invitation (members who have joined are disabled instead).
+router.delete("/:id", validate(teamMemberIdParamsSchema, "params"), revokeTeamInvite);
 
 export default router;

@@ -1,15 +1,23 @@
-import { UserPlus, Users } from "lucide-react";
+import { UserCheck, UserPlus, Users, UserX } from "lucide-react";
 import { useState } from "react";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { DataTable } from "../../components/ui/DataTable";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { QueryError } from "../../components/ui/QueryError";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { useAuth } from "../../context/AuthContext";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
-import { useResendInvite, useTeam, useUpdateTeamMemberRole, useUpdateTeamMemberStatus } from "../../hooks/useTeam";
+import {
+  useResendInvite,
+  useRevokeInvite,
+  useTeam,
+  useUpdateTeamMemberRole,
+  useUpdateTeamMemberStatus,
+} from "../../hooks/useTeam";
 import { errorMessage } from "../../lib/api";
 import { formatDate, relativeTime } from "../../lib/formatters";
 import { can } from "../../lib/permissions";
@@ -26,17 +34,18 @@ function memberStatus(member) {
 export function SettingsPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const { data: members = [], isLoading, isError, refetch } = useTeam();
   const canManageTeam = can(user, "team.manage");
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [roleDialogMember, setRoleDialogMember] = useState(null);
-  const [statusDialogMember, setStatusDialogMember] = useState(null);
   const [resentInvite, setResentInvite] = useState(null);
 
   const updateRoleMutation = useUpdateTeamMemberRole();
   const updateStatusMutation = useUpdateTeamMemberStatus();
   const resendInviteMutation = useResendInvite();
+  const revokeInviteMutation = useRevokeInvite();
 
   function handleChangeRole(id, role) {
     updateRoleMutation.mutate(
@@ -50,26 +59,34 @@ export function SettingsPage() {
     );
   }
 
-  function handleToggleStatus() {
-    const member = statusDialogMember;
-    const status = member.status === "active" ? "disabled" : "active";
-    updateStatusMutation.mutate(
-      { id: member._id, status },
-      {
-        onSuccess: (updated) => {
-          toast.success(
-            status === "disabled"
-              ? `${updated.name} was disabled and signed out everywhere.`
-              : `${updated.name} can sign in again.`
-          );
-          setStatusDialogMember(null);
-        },
-        onError: (error) => {
-          toast.error(errorMessage(error, "Couldn't change that member's status."));
-          setStatusDialogMember(null);
-        },
-      }
-    );
+  async function handleToggleStatus(member) {
+    const disabling = member.status === "active";
+    const done = await confirm({
+      title: disabling ? `Disable ${member.name}?` : `Enable ${member.name}?`,
+      description: disabling
+        ? "They're signed out everywhere right away and can't sign in until you enable the account again."
+        : "They can sign in again with their existing password.",
+      confirmLabel: disabling ? "Disable account" : "Enable account",
+      pendingLabel: "Saving…",
+      tone: disabling ? "danger" : "default",
+      icon: disabling ? UserX : UserCheck,
+      onConfirm: () => updateStatusMutation.mutateAsync({ id: member._id, status: disabling ? "disabled" : "active" }),
+    });
+    if (done) {
+      toast.success(disabling ? `${member.name} was disabled and signed out everywhere.` : `${member.name} can sign in again.`);
+    }
+  }
+
+  async function handleRevokeInvite(member) {
+    const done = await confirm({
+      title: `Withdraw ${member.name}'s invitation?`,
+      description: "Their invitation link stops working and the unused account is deleted. You can invite them again later.",
+      confirmLabel: "Withdraw invitation",
+      pendingLabel: "Withdrawing…",
+      tone: "danger",
+      onConfirm: () => revokeInviteMutation.mutateAsync(member._id),
+    });
+    if (done) toast.success(`Invitation for ${member.name} withdrawn.`);
   }
 
   function handleResendInvite(member) {
@@ -85,11 +102,11 @@ export function SettingsPage() {
       label: "Name",
       render: (member) => (
         <div className="flex items-center gap-2.5">
-          <Avatar name={member.name} size={24} />
-          <span className="text-text-primary">
-            {member.name}
-            {member._id === user.id && <span className="text-text-secondary"> (you)</span>}
-          </span>
+          <Avatar name={member.name} size={26} />
+          <span className="font-medium text-text-primary">{member.name}</span>
+          {member._id === user.id && (
+            <span className="rounded-btn bg-accent/10 px-1.5 py-0.5 text-[11px] font-medium text-accent">You</span>
+          )}
         </div>
       ),
     },
@@ -139,8 +156,9 @@ export function SettingsPage() {
                   <TeamRowMenu
                     member={member}
                     onChangeRole={() => setRoleDialogMember(member)}
-                    onToggleStatus={() => setStatusDialogMember(member)}
+                    onToggleStatus={() => handleToggleStatus(member)}
                     onResendInvite={() => handleResendInvite(member)}
+                    onRevokeInvite={() => handleRevokeInvite(member)}
                   />
                 </div>
               ),
@@ -149,11 +167,9 @@ export function SettingsPage() {
       : []),
   ];
 
-  const isDisabling = statusDialogMember?.status === "active";
-
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-[15px] font-semibold text-text-primary">Team</h2>
           <p className="mt-0.5 text-[13px] text-text-secondary">
@@ -162,7 +178,7 @@ export function SettingsPage() {
           </p>
         </div>
         {canManageTeam && (
-          <Button variant="primary" onClick={() => setIsAddOpen(true)}>
+          <Button variant="primary" className="shrink-0 self-start sm:self-auto" onClick={() => setIsAddOpen(true)}>
             <UserPlus size={14} />
             Add member
           </Button>
@@ -179,12 +195,7 @@ export function SettingsPage() {
             getRowKey={(member) => member._id}
             isLoading={isLoading}
             skeletonRowCount={6}
-            emptyState={
-              <div className="flex flex-col items-center gap-3">
-                <Users size={28} className="text-text-secondary" />
-                <p className="text-[13px] text-text-secondary">No team members yet</p>
-              </div>
-            }
+            emptyState={<EmptyState icon={Users} title="No team members yet" description="Invite your team to give each person the access their job needs." />}
           />
         )}
       </Card>
@@ -203,40 +214,6 @@ export function SettingsPage() {
             isSubmitting={updateRoleMutation.isPending}
             error={updateRoleMutation.isError ? errorMessage(updateRoleMutation.error) : ""}
           />
-
-          <ConfirmDialog
-            open={statusDialogMember !== null}
-            onClose={() => setStatusDialogMember(null)}
-            title={isDisabling ? "Disable account" : "Enable account"}
-            footer={
-              <>
-                <Button variant="secondary" onClick={() => setStatusDialogMember(null)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant={isDisabling ? "secondary" : "primary"}
-                  tone={isDisabling ? "danger" : "default"}
-                  onClick={handleToggleStatus}
-                  disabled={updateStatusMutation.isPending}
-                >
-                  {updateStatusMutation.isPending ? "Saving…" : isDisabling ? "Disable" : "Enable"}
-                </Button>
-              </>
-            }
-          >
-            {statusDialogMember &&
-              (isDisabling ? (
-                <p>
-                  <span className="font-medium text-text-primary">{statusDialogMember.name}</span> will be signed out
-                  everywhere right away and won't be able to sign in until re-enabled.
-                </p>
-              ) : (
-                <p>
-                  <span className="font-medium text-text-primary">{statusDialogMember.name}</span> will be able to sign
-                  in again with their existing password.
-                </p>
-              ))}
-          </ConfirmDialog>
 
           <ConfirmDialog
             open={resentInvite !== null}

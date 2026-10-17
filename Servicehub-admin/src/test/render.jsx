@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider } from "../context/AuthContext";
+import { ConfirmProvider } from "../context/ConfirmContext";
 import { ThemeProvider } from "../context/ThemeContext";
 import { ToastProvider } from "../context/ToastContext";
 
@@ -31,12 +32,14 @@ export function renderWithProviders(ui, { route = "/", path = "*", routeState } 
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <ToastProvider>
-            <AuthProvider>
-              <Routes>
-                <Route path={path} element={ui} />
-                {path !== "*" && <Route path="*" element={<LocationProbe />} />}
-              </Routes>
-            </AuthProvider>
+            <ConfirmProvider>
+              <AuthProvider>
+                <Routes>
+                  <Route path={path} element={ui} />
+                  {path !== "*" && <Route path="*" element={<LocationProbe />} />}
+                </Routes>
+              </AuthProvider>
+            </ConfirmProvider>
           </ToastProvider>
         </ThemeProvider>
       </QueryClientProvider>

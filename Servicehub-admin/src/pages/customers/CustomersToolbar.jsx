@@ -2,7 +2,7 @@ import { Search } from "lucide-react";
 import { Input } from "../../components/ui/Input";
 import { Toolbar } from "../../components/ui/Toolbar";
 
-export function CustomersToolbar({ search, setSearch, totalCount, actions }) {
+export function CustomersToolbar({ search, setSearch, actions }) {
   return (
     <Toolbar className="justify-between">
       <div className="relative">
@@ -19,12 +19,7 @@ export function CustomersToolbar({ search, setSearch, totalCount, actions }) {
         />
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="text-[13px] text-text-secondary">
-          <span className="font-data text-text-primary">{totalCount}</span> customers
-        </div>
-        {actions}
-      </div>
+      {actions && <div className="flex items-center gap-3">{actions}</div>}
     </Toolbar>
   );
 }

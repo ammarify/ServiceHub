@@ -41,13 +41,25 @@ token utility classes above.
 
 - `rounded-card` → 8px. Use for cards and inputs.
 - `rounded-btn` → 6px. Use for buttons and badges.
+- `rounded-full` only for things that are circles or capsules by nature:
+  avatars, status and unread dots, count badges, step markers, round icon
+  tiles, and progress/meter tracks.
+- Chat bubbles are `rounded-card` with the one corner nearest the sender
+  squared off as a tail (`rounded-tl-none` / `rounded-tr-none` in Support,
+  `rounded-bl-none` / `rounded-br-none` in the simulator widget). That is
+  the only partial radius in the app.
 - Never use any other radius value anywhere in the app.
 
 ### Shadows
 
 - `shadow-card` → light mode: `0 1px 2px rgb(0 0 0 / 0.04)`. Dark mode:
-  `none` — depth in dark mode comes only from surface color steps and
-  borders, never shadows.
+  `none` — cards in dark mode get depth only from surface color steps and
+  borders.
+- `shadow-pop` → floating layers only: menus, popovers, dialogs, drawers,
+  toasts and the guided tour. Light: `0 12px 32px -12px rgb(16 24 40 /
+  0.18), 0 2px 6px -2px rgb(16 24 40 / 0.08)`; dark: `0 16px 40px -12px
+  rgb(0 0 0 / 0.75)` (a layer floating over dark surfaces needs it to read
+  as on top). Never on cards or anything in the page flow.
 
 ## Typography
 
@@ -56,8 +68,15 @@ token utility classes above.
 - **Every data value** — IDs, amounts, dates, times, counts, percentages —
   renders in **JetBrains Mono** via the `.font-data` utility class. Hard rule,
   no exceptions. All formatting goes through `src/lib/formatters.js`.
-- Page titles: 20px / weight 600 (`text-[20px] font-semibold`). No text
-  anywhere in the app may exceed 24px.
+- Page titles: 20px / weight 600 (`text-[20px] font-semibold`); the same
+  size names the subject of a page (a booking code, the person on the
+  account page, an error page's title). No text anywhere in the app may
+  exceed 24px.
+- The rest of the scale, and nothing else: 10px for `<kbd>` hints and the
+  role caption under a name; 11px uppercase labels and table headers;
+  12px captions; 15px section titles; 17px the tour's welcome title; 18px
+  amounts in detail cards; 22px the headline on the sign-in panel and the
+  simulator; 24px the KPI figures on the dashboard.
 
 ## Component Grammar
 
@@ -71,9 +90,18 @@ token utility classes above.
 - **Enum values in text**: never print a raw API value such as
   `support_agent` or `in_progress`. Use `roleLabel()` (Settings) or
   `humanize()` from `lib/formatters.js`.
-- **Tables**: compact density. Row height 44px, 13px body text, one line per
-  row (cells don't wrap — narrow screens scroll the table sideways). Header
-  row is 11px uppercase `text-text-secondary` with letter-spacing.
+- **Tables**: `<DataTable>` only. Row height 48px, 13px body text, one line
+  per row (cells don't wrap — narrow screens scroll the table sideways).
+  Header row is an 11px uppercase `text-text-secondary` band on
+  `bg-canvas/60`; sortable headers are buttons with an arrow and
+  `aria-sort`. Clickable rows are focusable and open with Enter or Space.
+  Identify people with an `<Avatar>` and services with `<ServiceLabel>`;
+  an unassigned provider reads "Unassigned", never a dash.
+- **Pagination**: `<Pagination>` in the table's `footer`, never in the
+  toolbar: "Showing 1–10 of 55 bookings", rows per page (10/25/50,
+  remembered per list by `usePageSize(list)`), previous/next icon buttons
+  and numbered pages. The total shows even when everything fits on one
+  page.
 - **Buttons**: three variants only — primary (accent background), secondary
   (surface background + border), ghost (no background/border until hover).
   Height 34px. No gradients, ever. For a destructive action use
@@ -82,10 +110,42 @@ token utility classes above.
   which one you wrote last). Missing variant/tone combinations go into
   `Button.jsx`'s `VARIANT_TONE_CLASSES` map.
 - **Cards**: `bg-surface`, 1px `border-border`, `rounded-card`, 20px padding.
-- **Feedback**: inline errors next to the field or in the dialog that
-  caused them (`<FormField error>` or a `role="alert"` paragraph). Toasts
-  (`useToast()`) only for actions with no natural inline place to report
-  (row menus, header quick actions, background successes).
+- **Confirmation**: anything destructive or hard to undo (delete, cancel a
+  booking, reject or approve a refund, mark completed, disable an account,
+  withdraw an invitation, sign out everywhere) asks first through
+  `useConfirm()`: a title that names the record ("Delete Crystal
+  Howard?"), what will happen, a confirm button that repeats the action's
+  name, `tone="danger"` for destructive ones and an icon. Dialogs that also
+  collect input (cancel reason, refund note) use `<ConfirmDialog>` with the
+  same anatomy.
+- **Feedback**: every create, update, delete and status change ends with a
+  toast that names the record and the outcome ("Crystal Howard deleted.",
+  "Booking BK-4853 cancelled."). Errors stay inline next to the field or in
+  the dialog that caused them (`<FormField error>` or a `role="alert"`
+  paragraph); `toast.error` only for actions with no inline place (row
+  menus, header quick actions).
+- **Deleting**: only what has no history (see `servihub-api/SECURITY.md`).
+  Profiles end with a `<DangerZone>`; when the API would refuse, the button
+  is disabled and the zone says why and what to do instead.
+- **Empty states**: `<EmptyState icon title description action>`: what's
+  missing and, when there is one, the next step as a button.
+- **Search and commands**: one command palette (`layouts/CommandPalette`,
+  Ctrl/Cmd + K, the sidebar search box, or the topbar button below lg). It
+  lists the pages from `NAV_GROUPS` the role can open, quick actions
+  (`buildCommands`) and search results. A new page goes into `NAV_GROUPS`;
+  an action that opens a form deep-links with `?new=1`, like `/bookings`
+  and `/refunds`. Don't add other global search boxes.
+- **Navigation counts**: only for work waiting on someone (open tickets,
+  refunds waiting for a decision), from `useNavCounts` in `Sidebar`. Read
+  them from list queries under `["tickets", "list"]` / `["refunds", "list"]`
+  so realtime invalidation keeps them current.
+- **Detail pages**: a summary card first (icon tile, code + status, a meta
+  line, actions with the next lifecycle step as the primary button), then
+  progress where the record has a lifecycle (`BookingProgress`), an
+  activity feed with an icon and tone per event, and facts as `InfoList` /
+  `InfoRow`.
+- **Pickers**: `SearchSelect` opens on a click, typing or ↓, never on focus
+  alone, so a dialog that focuses it first isn't covered by suggestions.
 
 ## Hard Rules (never violate)
 
@@ -109,21 +169,25 @@ token utility classes above.
 - Folder structure (all under `src/`):
   ```
   components/ui/   Reusable, feature-agnostic primitives (see table below).
-  components/      Feature components shared by several pages (dashboard
-                   cards, refunds/RequestRefundDialog).
+  components/      Feature components shared by several pages: dashboard
+                   cards and dashboard/ (KpiStrip, Sparkline,
+                   DashboardHeader, ListCard), tour/ (GuidedTour and the
+                   role-aware steps), ServiceIcon / ServiceLabel,
+                   refunds/RequestRefundDialog.
   context/         AuthContext, SocketContext, NotificationContext,
-                   ToastContext, ThemeContext.
+                   ToastContext, ConfirmContext, TourContext,
+                   CommandPaletteContext, ThemeContext.
   hooks/           TanStack Query hooks, one file per API resource, plus
                    useTicketSocket. Components never call lib/api.js
                    directly - they go through these hooks.
   layouts/         AppLayout (sidebar + topbar + permission check),
-                   Sidebar, Topbar, SidebarSearch (Cmd/Ctrl+K),
-                   NotificationsMenu, RangePicker, UserMenu,
-                   RealtimeBridge, AuthLayout.
+                   Sidebar, Topbar, CommandPalette (and the SidebarSearch
+                   button that opens it), NotificationsMenu, RangePicker,
+                   UserMenu, RealtimeBridge, AuthLayout, AuthBrandPanel.
   lib/             api.js (axios + silent refresh), socket.js,
-                   permissions.js, formatters.js, small hooks
-                   (useDebouncedValue, useDismiss, useMediaQuery,
-                   useQueryParamState, useDocumentTitle).
+                   permissions.js, formatters.js, pagination.js, small
+                   hooks (useDebouncedValue, useDismiss, useMediaQuery,
+                   useQueryParamState, useDocumentTitle, usePageSize).
   pages/           One folder per screen. Pages compose components; they
                    don't define new visual primitives inline.
   test/            Vitest setup, render helper, mock API.
@@ -136,9 +200,12 @@ token utility classes above.
 
 ## Theme System
 
-- `src/context/ThemeContext.jsx` provides `{ theme, setTheme, toggleTheme }`
-  via `useTheme()`. Theme is `"light" | "dark"`.
-- Default: system preference, unless the user chose a theme
+- `src/context/ThemeContext.jsx` provides `{ theme, preference, setTheme,
+  toggleTheme }` via `useTheme()`. `theme` is what's showing (`"light" |
+  "dark"`); `preference` is `"light" | "dark" | "system"`, set with
+  `setTheme()` (Account → Appearance). `toggleTheme()` picks the opposite
+  of what's showing.
+- "system" follows the device live; only an explicit choice is stored
   (`localStorage["servihub-theme"]`).
 - An inline script in `index.html` sets the `.dark` class before React
   hydrates, so there is no flash of the wrong theme.
@@ -206,10 +273,17 @@ token utility classes above.
 - `hooks/useTicketSocket.js` handles the open conversation: joining the
   ticket room, appending `ticket:message` into the cache (deduplicated —
   the sender receives its own message back), and the 2s typing indicator.
-- `/simulator` is a separate, deliberately plain test-harness page (no
-  `components/ui`, no tokens, dashed "test harness" banner). It uses its own
+- `/simulator` stands in for the customer-facing chat widget: a public page
+  (no sign-in) built from the same tokens and primitives, clearly labelled
+  "Demo customer simulator", with its own theme toggle. It uses its own
   socket from `createSimulatorSocket()` and per-ticket tokens from the API,
   and exists only when the API runs in DEMO_MODE.
+- Support conversations: customer bubbles on the left (surface + border),
+  agent bubbles on the right (`bg-accent text-white`), grouped by sender
+  with the avatar and name on the first bubble and the time under the
+  last; day separators; the other side's typing shows as a bubble with
+  `<TypingDots>`. The thread follows new messages only while the agent is
+  at the bottom; otherwise a "N new messages" button appears.
 - StrictMode gotcha: socket.io-client doesn't auto-reconnect a socket you
   disconnected yourself. Sockets are created with `autoConnect: false` and
   connected in the effect that also disconnects them, so StrictMode's
@@ -228,9 +302,13 @@ Check this list before adding a primitive.
 | `Toolbar` | `className` | `flex flex-wrap items-center gap-3` filter bar. |
 | `DetailField` | `label`, `mono=false` | Label/value row for drawers and info cards. |
 | `Drawer` | `open`, `onClose`, `title` or `ariaLabel`, `widthClassName="max-w-md"`, `side="left"\|"right"`, `padded=true` | Stays mounted through its close transition — clear the `open` flag, not the selected record. Escape closes it. |
-| `ConfirmDialog` | `open`, `onClose`, `title`, `description`, `footer`, `onSubmit`, `widthClassName` | Centered modal; with `onSubmit` the body is a `<form>` (Enter submits). **Render it as a sibling of a `Drawer`, never inside one** — the drawer's transform would become the containing block for the fixed overlay. |
-| `DataTable` | `columns` (`{ key, label, align, sortable, render }`), `data`, `getRowKey`, `getRowClassName`, `onRowClick`, `sortKey`, `sortDirection`, `onSortChange`, `isLoading`, `emptyState`, `skeletonRowCount=8` | 44px one-line rows; `min-w-[720px]` inside `overflow-x-auto`. |
-| `Pagination` | `page`, `pageSize`, `total`, `totalPages`, `onPageChange`, `label` | "1–12 of 55" + Prev/Next. |
+| `ConfirmDialog` | `open`, `onClose`, `title`, `description`, `icon`, `tone="default"\|"danger"\|"warning"`, `footer`, `onSubmit`, `widthClassName` | Centered modal (portaled to `body`); `icon` sits in a tinted circle of `tone`'s color. With `onSubmit` the body is a `<form>` (Enter submits). For a plain yes/no question use `useConfirm()` instead. |
+| `DataTable` | `columns` (`{ key, label, align, sortable, render }`), `data`, `getRowKey`, `getRowClassName`, `onRowClick`, `sortKey`, `sortDirection`, `onSortChange`, `isLoading`, `isFetching`, `emptyState`, `skeletonRowCount=8`, `footer` | 48px one-line rows; `min-w-[720px]` inside `overflow-x-auto`. `isFetching` dims the rows while a new page loads; `footer` holds the `Pagination`. |
+| `Pagination` | `page`, `pageSize`, `total`, `totalPages`, `onPageChange`, `onPageSizeChange`, `label="results"` | "Showing 1–10 of 55 bookings", rows per page (when `onPageSizeChange` is given), previous/next icon buttons and numbered pages ("1 / 6" on phones). Renders nothing for an empty list. |
+| `EmptyState` | `icon`, `title`, `description`, `action` | Every list's empty state. |
+| `DangerZone` | `title`, `description`, `actionLabel`, `onAction`, `disabled`, `disabledReason`, `isPending` | The destructive section at the end of a profile; shows `disabledReason` instead of `description` when disabled. |
+| `TypingDots` | `className` | Three animated dots for "is typing". |
+| `InfoList` / `InfoRow` | `InfoRow`: `icon`, `label`, `mono=false`, children | Facts about a record (phone, area, rating, dates) as icon + label + value rows in a `<dl>`. Use instead of stacks of `DetailField` in cards and drawers. |
 | `FormField` | `label`, `hint`, `error`, `className` | Wires the label, hint and error to the single control inside it. |
 | `Input` / `Select` / `Textarea` / `Checkbox` | native props (`Checkbox` adds `label`) | Token-styled native controls. |
 | `SearchSelect` | `value`, `onChange`, `useOptions(query)`, `getKey`, `renderOption`, `renderValue`, `placeholder`, `emptyText` | Accessible combobox for picking a record from the API. |
@@ -238,16 +316,85 @@ Check this list before adding a primitive.
 | `Avatar` | `name`, `size=28` | Initials on an accent-tinted circle. |
 | `Logo` | `size=28` | Same mark as `public/favicon.svg`. |
 
-Micro-interactions live in `index.css` and are limited to four:
+Outside `components/ui/`: `ServiceIcon` / `ServiceLabel`
+(`components/ServiceIcon.jsx`) give each service its icon wherever a
+service is named in a list (`strong` is the larger outlined tile for a
+record's header), and `PasswordStrength` (`components/`) goes under every
+new-password field.
+
+Micro-interactions live in `index.css` and are limited to these:
 `animate-page-enter` (route change), `animate-dialog-enter` /
-`animate-overlay-enter` (dialogs, drawers, toasts) and
-`animate-highlight-pulse` ("this row just changed").
+`animate-overlay-enter` (dialogs, drawers, toasts, the tour),
+`animate-highlight-pulse` ("this row just changed"), `animate-typing-dot`
+(`TypingDots`), `animate-live` (the green "live" dot: dashboard header,
+sign-in panel, simulator) and
+`animate-toast-countdown` (the bar showing how long a toast stays; it
+pauses on hover or focus) and `animate-preview-enter` (the sign-in
+preview cards, once, staggered with inline delays).
+
+## Feedback API
+
+- `const confirm = useConfirm()` (`context/ConfirmContext.jsx`), then
+  `await confirm({ title, description, confirmLabel, pendingLabel,
+  cancelLabel, tone, icon, onConfirm })` → `true` once `onConfirm` has
+  finished, `false` if the person backed out. While `onConfirm` runs the
+  button shows `pendingLabel`; if it throws, the dialog stays open and shows
+  the error, so a failed delete is never reported as done. Typical use:
+  `if (await confirm({ ..., onConfirm: () => mutation.mutateAsync(id) }))
+  toast.success("… deleted.")`.
+- `const toast = useToast()`: `toast.success(message, { title? })`,
+  `toast.error(...)`, `toast.info(...)`. Success and info stay 4.5s, errors
+  7s; each has a dismiss button and a countdown bar, and at most four are
+  shown at once.
+- Both providers are mounted once in `main.jsx` (and in
+  `test/render.jsx`).
+
+## Guided tour
+
+- After someone's first sign-in in a browser, `TourProvider`
+  (`context/TourContext.jsx`, mounted in `AppLayout`) opens a short
+  spotlight tour. It's remembered per user in
+  `localStorage["servihub-tour:<userId>"]` whether finished or skipped, and
+  replayed from the profile menu ("Take the tour", `useTour().startTour()`).
+- Steps come from `buildTourSteps(user)` in `components/tour/tourSteps.js`,
+  filtered by permission, so a role is never shown a page it can't open.
+  Each step points at a `data-tour` anchor (`nav`, `search`,
+  `nav-<path>`, `notifications`, `range`, `user-menu`, `menu-button` on
+  phones); steps whose anchor isn't on screen are skipped when the tour
+  starts. Keep the anchors when you restructure the shell, and add one when
+  a new top-level page deserves a step.
+- Skippable at every step ("Skip for now" on the welcome card, "Skip tour",
+  the close button or Escape); → / ← move between steps and focus stays in
+  the popover.
+
+## Gotchas
+
+- Tailwind v4 orders responsive variants by the breakpoint list, so mixing
+  a named breakpoint (`sm:`, `xl:`) with an arbitrary one
+  (`min-[1100px]:`) on the same property can let the smaller one win. Use
+  the named breakpoints only.
+- Menus inside a table or any `overflow` container are clipped: portal them
+  to `document.body` with fixed positioning (see `TeamRowMenu`), and pass
+  both the trigger and the menu to `useDismiss([triggerRef, menuRef], isOpen, close)`.
+- The window never scrolls: the app shell is `relative h-dvh
+  overflow-hidden` and only `<main>` (or a page's own panes) scrolls. Keep
+  it that way. Never put `sr-only` on a `<table>` (a table ignores the
+  height and overflow it sets, so a long one stretches the page); wrap it in
+  `<div className="sr-only">`.
+- Height breakpoints: `short:` (max-height 760px, e.g. 1920×1080 at 125%)
+  and `shorter:` (max-height 640px) are custom variants in `index.css`.
+  The sign-in pages use them, plus a preview that scales to the space it
+  gets, so they never scroll on laptop screens. Check new full-height
+  layouts at 1536×702 (the most common laptop setup) as well as large
+  screens.
 
 ## Testing
 
 - `npm test` runs Vitest with jsdom and Testing Library (`src/**/*.test.jsx?`).
 - `src/test/render.jsx` renders with every provider; `src/test/mockApi.js`
-  stubs the axios instance per test. Prefer testing behaviour a user would
+  stubs the axios instance per test; `src/test/setup.js` adds what jsdom
+  lacks (`matchMedia`, `scrollIntoView`). Code that needs `ResizeObserver`
+  checks for it first. Prefer testing behaviour a user would
   notice (what is shown, what is offered to which role) over implementation
   details.
 - `npm run lint` must pass; CI (`.github/workflows/ci.yml`) runs lint, tests
@@ -264,3 +411,16 @@ account/session management, team invites, create/edit flows for bookings,
 providers and customers, refund requests from anywhere, ticket status
 actions, notifications, dashboard periods, deep links and tests. Mock data
 (`src/data/`) and its helpers are gone.
+
+The UI polish pass (October 2026) moved the sign-in form to the right of a
+product panel, rebuilt the dashboard (greeting and live status, KPI tiles
+with sparklines, a bookings/revenue trend, status shares, list cards),
+redesigned tables and pagination, added confirmations and toasts to every
+destructive or changing action, safe deletes for providers, customers and
+pending invitations, the guided tour, and the chat-style support
+conversation and customer simulator. `StatCard` was replaced by
+`dashboard/KpiStrip`. A second round the same month stopped the window
+from ever scrolling (dashboard and sign-in pages), and added the command
+palette, sidebar counts, the booking progress tracker and activity feed,
+richer drawers, the account page's appearance settings and password
+strength, and the redesigned error pages.

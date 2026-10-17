@@ -148,8 +148,8 @@ navigation and buttons (UI visibility only - the API enforces everything).
 | `booking.create` | ✅ | ✅ | ❌ | ❌ |
 | `booking.update` (edit, start, complete) | ✅ | ✅ | ❌ | ❌ |
 | `booking.reassign` (incl. cancel) | ✅ | ✅ | ❌ | ❌ |
-| `provider.read` / `provider.manage` | ✅ | ✅ | ❌ | ❌ |
-| `customer.read` / `customer.manage` | ✅ | ✅ | ❌ | ❌ |
+| `provider.read` / `provider.manage` (incl. delete) | ✅ | ✅ | ❌ | ❌ |
+| `customer.read` / `customer.manage` (incl. delete) | ✅ | ✅ | ❌ | ❌ |
 | `refund.read` / `refund.request` | ✅ | ✅ | ✅ | ✅ |
 | `refund.approve` | ✅ | ✅ | ❌ | ✅ |
 | `ticket.read` (incl. AI analyze) / `ticket.reply` / `ticket.resolve` | ✅ | ✅ | ✅ | ❌ |
@@ -163,6 +163,11 @@ Beyond the matrix:
   read.
 - Admins can't change their own role or status, and the last active
   super_admin can't be demoted or disabled.
+- Deleting never orphans history: a provider or customer can be deleted
+  only while no booking (or, for customers, support ticket) points at them,
+  a team member only while their invitation is still pending (anyone who
+  has joined is disabled instead), and bookings are cancelled, never
+  deleted. Refusals are 409 `HAS_HISTORY`.
 - Business rules are enforced on the server, not just hidden in the UI:
   refunds can't exceed the refundable balance (approved + pending refunds
   count against it; one pending request per booking is also a unique index),

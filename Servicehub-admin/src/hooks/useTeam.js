@@ -56,3 +56,18 @@ export function useUpdateTeamMemberStatus() {
     onSuccess: (member) => replaceMember(queryClient, member),
   });
 }
+
+// Withdraws a pending invitation (deletes the account that was never used).
+export function useRevokeInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      await api.delete(`/team/${id}`);
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.setQueryData(["team"], (old) => (old ? old.filter((m) => m._id !== id) : old));
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+    },
+  });
+}

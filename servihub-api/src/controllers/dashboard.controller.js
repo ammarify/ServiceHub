@@ -93,6 +93,8 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$scheduledAt", timezone: tz } },
           count: { $sum: 1 },
+          // Same definition as the revenue KPI: completed jobs only.
+          revenue: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, "$amount", 0] } },
         },
       },
     ]),
@@ -107,11 +109,12 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
       .populate("customer", "name"),
   ]);
 
-  const trendMap = new Map(trendAgg.map((d) => [d._id, d.count]));
+  const trendMap = new Map(trendAgg.map((d) => [d._id, d]));
   const trend = [];
   for (let day = trendStart; day < trendEnd; day = addDaysInZone(day, 1, tz)) {
     const key = dateKeyInZone(day, tz);
-    trend.push({ date: key, count: trendMap.get(key) ?? 0 });
+    const entry = trendMap.get(key);
+    trend.push({ date: key, count: entry?.count ?? 0, revenue: entry?.revenue ?? 0 });
   }
 
   const statusMap = new Map(statusBreakdownAgg.map((s) => [s._id, s.count]));
@@ -151,7 +154,8 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
       Ticket.find({ status: "open" })
         .sort({ createdAt: -1 })
         .limit(OPEN_TICKETS_LIMIT)
-        .select("code subject priority status createdAt"),
+        .select("code subject priority status createdAt customer")
+        .populate("customer", "name"),
     ]);
     response.kpis.activeTickets = activeTickets;
     response.kpis.newTickets = newTickets;

@@ -23,7 +23,7 @@ describe("dashboard summary (bug #10)", () => {
     const todayStart = startOfDayInZone(now, TZ);
     const tomorrowStart = addDaysInZone(todayStart, 1, TZ);
 
-    await createBooking({ scheduledAt: new Date(todayStart.getTime() + 1000) }); // just after local midnight
+    await createBooking({ scheduledAt: new Date(todayStart.getTime() + 1000), status: "completed", amount: 150 }); // just after local midnight
     await createBooking({ scheduledAt: new Date(tomorrowStart.getTime() - 1000) }); // just before the next one
     await createBooking({ scheduledAt: new Date(todayStart.getTime() - 1000) }); // yesterday, locally
     await createBooking({ scheduledAt: new Date(tomorrowStart.getTime() + HOUR) }); // tomorrow
@@ -38,7 +38,8 @@ describe("dashboard summary (bug #10)", () => {
 
     expect(res.body.trend).toHaveLength(7);
     const todayKey = dateKeyInZone(now, TZ);
-    expect(res.body.trend.at(-1)).toEqual({ date: todayKey, count: 2 });
+    // Revenue per day counts completed jobs only, like the revenue KPI.
+    expect(res.body.trend.at(-1)).toEqual({ date: todayKey, count: 2, revenue: 150 });
     expect(res.body.trend.at(-2).count).toBe(1);
   });
 
@@ -84,6 +85,7 @@ describe("dashboard summary (bug #10)", () => {
     const support = await (await signIn(team.support_agent)).get("/api/dashboard/summary");
     expect(support.body.kpis.activeTickets).toBe(1);
     expect(support.body.openTickets).toHaveLength(1);
+    expect(support.body.openTickets[0].customer.name).toEqual(expect.any(String));
     expect(support.body.pendingRefunds.count).toBe(1);
 
     const finance = await (await signIn(team.finance)).get("/api/dashboard/summary");

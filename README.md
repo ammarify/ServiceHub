@@ -8,43 +8,63 @@ workflow. Each role sees only what it is allowed to.
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
-| Support with the AI Copilot (dark mode) | Booking detail |
+| Sign-in | Support with the AI Copilot (dark mode) |
 |---|---|
-| ![Support center](docs/screenshots/support-copilot-dark.png) | ![Booking detail](docs/screenshots/booking-detail.png) |
-
-![Refund approval](docs/screenshots/refund-drawer.png)
+| ![Sign-in](docs/screenshots/login.png) | ![Support center](docs/screenshots/support-copilot-dark.png) |
+| **Bookings** | **Booking detail with progress and activity** |
+| ![Bookings](docs/screenshots/bookings.png) | ![Booking detail](docs/screenshots/booking-detail.png) |
+| **Command palette (Ctrl/Cmd + K)** | **Guided tour after the first sign-in** |
+| ![Command palette](docs/screenshots/command-palette.png) | ![Guided tour](docs/screenshots/guided-tour.png) |
+| **Refund approval** | **Account and appearance** |
+| ![Refund approval](docs/screenshots/refund-drawer.png) | ![Account](docs/screenshots/account.png) |
 
 ## Features
 
-- **Dashboard**: bookings, revenue, tickets and provider availability for
-  today, this week or this month in the viewer's time zone, with deltas
-  against the previous period, a booking trend, status breakdown, and lists
-  of recent bookings, open tickets and pending refunds (by role).
+- **Dashboard**: a greeting with live status and quick actions; bookings,
+  revenue, tickets and provider availability for today, this week or this
+  month in the viewer's time zone, with deltas against the previous period
+  and sparklines; a daily trend you can switch between bookings and
+  revenue; status shares; and lists of recent bookings, open tickets and
+  pending refunds (by role).
 - **Bookings**: search, filter, sort and paginate; create bookings for
   customers; edit, start, complete, reassign or cancel them, with every rule
   (status, service match, provider availability, refunded amounts)
-  enforced by the API and recorded on a timeline.
+  enforced by the API. Each booking shows a progress tracker (booked,
+  assigned, in progress, completed or cancelled) and an activity feed of
+  who changed what.
 - **Providers and customers**: searchable directories with profiles, history
-  and computed stats; add and edit records.
-- **Live support**: three-pane workspace (queue, conversation, Copilot) over
-  Socket.IO, with typing indicators, unanswered markers, start / resolve /
-  reopen / escalate, and a public customer simulator to play the customer.
+  and computed stats; add and edit records, and delete those with no
+  history (anything with bookings or tickets stays, so nothing is
+  orphaned).
+- **Live support**: three-pane workspace (inbox, conversation, Copilot) over
+  Socket.IO: chat bubbles, typing indicators, last-message previews,
+  unanswered markers, quick replies, start / resolve / reopen / escalate,
+  and a public customer simulator styled as a chat widget to play the
+  customer.
 - **AI Copilot** (Groq): summary, sentiment, refund eligibility citing the
   written refund policy, a suggested reply and next actions. Server-side
   guardrails cap refunds to what the cited policy section allows and
   remove actions the booking can't take, so a prompt-injected message
   can't talk it into "100% refund".
 - **Refunds**: request from the Refunds page, a booking or a Copilot
-  suggestion; approve or reject with an optional note. Amounts can never
-  exceed what is still refundable, and approvers and requesters are
-  notified live.
+  suggestion; approve or reject with an optional note, with the request and
+  decision history in one place. Amounts can never exceed what is still
+  refundable, and approvers and requesters are notified live.
 - **Team and accounts**: invite members by link (emailed through Resend when
-  configured), change roles, disable accounts (signs them out everywhere at
-  once), reset forgotten passwords, change your own password, sign out of
-  every device, "Keep me logged in", Google sign-in for existing staff.
-- **Everywhere**: role-based access from one permission map, global search
-  (Ctrl/Cmd + K) with deep links, in-app notifications, light and dark
-  themes, and layouts that work down to phone width.
+  configured), resend or withdraw invitations, change roles, disable
+  accounts (signs them out everywhere at once), reset forgotten passwords,
+  change your own password (with a strength meter), light / dark / system
+  appearance, sign out of every device, "Keep me logged in", Google sign-in
+  for existing staff.
+- **Onboarding**: a short guided tour after the first sign-in, built for the
+  person's role; skip it at any step or replay it from the profile menu.
+- **Everywhere**: role-based access from one permission map; a command
+  palette (Ctrl/Cmd + K) to jump to any page, record or action; live counts
+  of open tickets and pending refunds in the sidebar; a confirmation before
+  anything destructive and a toast after every change; tables with the
+  total record count, page numbers and rows per page; in-app notifications;
+  light and dark themes; and layouts that fit the window from large
+  monitors to 125%-scaled laptops and phones.
 
 ## Tech stack
 

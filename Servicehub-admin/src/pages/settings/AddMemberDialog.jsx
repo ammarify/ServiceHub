@@ -5,9 +5,10 @@ import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { FormField } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
+import { useToast } from "../../context/ToastContext";
 import { useCreateTeamMember } from "../../hooks/useTeam";
 import { errorMessage, fieldErrors } from "../../lib/api";
-import { ROLE_OPTIONS } from "./roles";
+import { ROLE_OPTIONS, roleLabel } from "./roles";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -58,6 +59,7 @@ function AddMemberForm({ onClose }) {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
   const [invite, setInvite] = useState(null);
+  const toast = useToast();
   const mutation = useCreateTeamMember();
 
   function update(field) {
@@ -75,7 +77,10 @@ function AddMemberForm({ onClose }) {
     mutation.mutate(
       { name: form.name.trim(), email: form.email.trim(), role: form.role },
       {
-        onSuccess: (result) => setInvite(result),
+        onSuccess: (result) => {
+          setInvite(result);
+          toast.success(`${result.member.name} added as ${roleLabel(result.member.role)}.`);
+        },
         onError: (error) => {
           const apiErrors = fieldErrors(error);
           if (Object.keys(apiErrors).length > 0) setErrors(apiErrors);

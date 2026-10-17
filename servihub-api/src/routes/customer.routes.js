@@ -2,7 +2,13 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
-import { listCustomers, getCustomerById, createCustomer, updateCustomer } from "../controllers/customer.controller.js";
+import {
+  listCustomers,
+  getCustomerById,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+} from "../controllers/customer.controller.js";
 import {
   listCustomersQuerySchema,
   customerIdParamsSchema,
@@ -36,6 +42,13 @@ router.patch(
   validate(customerIdParamsSchema, "params"),
   validate(updateCustomerBodySchema, "body"),
   updateCustomer
+);
+
+router.delete(
+  "/:id",
+  requirePermission("customer.manage"),
+  validate(customerIdParamsSchema, "params"),
+  deleteCustomer
 );
 
 export default router;

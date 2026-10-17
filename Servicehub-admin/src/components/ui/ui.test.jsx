@@ -2,32 +2,90 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { DataTable } from "./DataTable";
+import { EmptyState } from "./EmptyState";
 import { Pagination } from "./Pagination";
 import { StatusBadge } from "./StatusBadge";
 
+function rangeText(text) {
+  return (_, element) => element?.tagName === "P" && element.textContent === text;
+}
+
 describe("Pagination", () => {
-  it("shows the visible range and moves between pages", async () => {
+  it("shows which rows are visible out of the total and moves between pages", async () => {
     const onPageChange = vi.fn();
     render(<Pagination page={2} pageSize={12} total={55} totalPages={5} onPageChange={onPageChange} label="bookings" />);
 
-    expect(screen.getByText("13–24 of 55 bookings")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    await userEvent.click(screen.getByRole("button", { name: "Prev" }));
-    expect(onPageChange.mock.calls).toEqual([[3], [1]]);
+    expect(screen.getByText(rangeText("Showing 13–24 of 55 bookings"))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
+    await userEvent.click(screen.getByRole("button", { name: "Page 5" }));
+    expect(onPageChange.mock.calls).toEqual([[3], [1], [5]]);
   });
 
   it("disables the edges", () => {
     render(<Pagination page={5} pageSize={12} total={55} totalPages={5} onPageChange={() => {}} />);
-    expect(screen.getByText("49–55 of 55 results")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Prev" })).toBeEnabled();
+    expect(screen.getByText(rangeText("Showing 49–55 of 55 results"))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
   });
 
-  it("renders nothing when everything fits on one page", () => {
-    const { container } = render(
-      <Pagination page={1} pageSize={12} total={7} totalPages={1} onPageChange={() => {}} />
+  it("still shows the total when everything fits on one page, without page controls", () => {
+    render(<Pagination page={1} pageSize={10} total={7} totalPages={1} onPageChange={() => {}} label="refunds" />);
+    expect(screen.getByText(rangeText("Showing 1–7 of 7 refunds"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next page" })).not.toBeInTheDocument();
+  });
+
+  it("changes the number of rows per page", async () => {
+    const onPageSizeChange = vi.fn();
+    render(
+      <Pagination page={1} pageSize={10} total={55} totalPages={6} onPageChange={() => {}} onPageSizeChange={onPageSizeChange} />
     );
+    await userEvent.selectOptions(screen.getByLabelText("Rows per page"), "25");
+    expect(onPageSizeChange).toHaveBeenCalledWith(25);
+  });
+
+  it("renders nothing for an empty list", () => {
+    const { container } = render(<Pagination page={1} pageSize={10} total={0} totalPages={0} onPageChange={() => {}} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("DataTable", () => {
+  it("opens a row with the keyboard as well as the mouse", async () => {
+    const onRowClick = vi.fn();
+    render(
+      <DataTable
+        columns={[{ key: "name", label: "Name" }]}
+        data={[{ id: "1", name: "Crystal Howard" }]}
+        getRowKey={(row) => row.id}
+        onRowClick={onRowClick}
+      />
+    );
+
+    const row = screen.getByText("Crystal Howard").closest("tr");
+    row.focus();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.click(row);
+    expect(onRowClick).toHaveBeenCalledTimes(2);
+  });
+
+  it("marks the sorted column for assistive technology", () => {
+    render(
+      <DataTable
+        columns={[{ key: "amount", label: "Amount", sortable: true }]}
+        data={[]}
+        getRowKey={(row) => row.id}
+        sortKey="amount"
+        sortDirection="desc"
+        onSortChange={() => {}}
+        emptyState={<EmptyState title="No bookings yet" />}
+      />
+    );
+    expect(screen.getByRole("columnheader", { name: /Amount/ })).toHaveAttribute("aria-sort", "descending");
+    expect(screen.getByText("No bookings yet")).toBeInTheDocument();
   });
 });
 

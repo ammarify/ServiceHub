@@ -110,10 +110,16 @@ export function CopilotPanel({ ticket, onInsertReply, collapsible = false, isCol
 
       <div className="flex-1 overflow-y-auto p-4">
         {!aiEnabled ? (
-          <p className="text-[13px] leading-relaxed text-text-secondary">
-            The AI Copilot isn't configured on this server. Ask an administrator to add a Groq API key
-            (GROQ_API_KEY) to enable ticket analysis.
-          </p>
+          <div className="rounded-card border border-dashed border-border p-4 text-center">
+            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent" aria-hidden="true">
+              <Sparkles size={18} />
+            </span>
+            <p className="mt-3 text-[13px] font-medium text-text-primary">Copilot isn't set up yet</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">
+              The AI Copilot isn't configured on this server. Ask an administrator to add a Groq API key (
+              <span className="font-data">GROQ_API_KEY</span>) to enable ticket analysis.
+            </p>
+          </div>
         ) : (
           <>
             <Button variant="secondary" className="w-full justify-center" onClick={() => analyzeMutation.mutate()} disabled={isLoading}>
@@ -240,10 +246,21 @@ export function CopilotPanel({ ticket, onInsertReply, collapsible = false, isCol
         )}
 
         {aiEnabled && !analysis && !isLoading && !isError && (
-          <p className="mt-5 text-[13px] leading-relaxed text-text-secondary">
-            Run analysis to see a sentiment read, refund recommendation, and a suggested reply for this
-            ticket.
-          </p>
+          <div className="mt-5">
+            <p className="text-[13px] leading-relaxed text-text-secondary">Analyze this ticket to get:</p>
+            <ul className="mt-2 flex flex-col gap-2">
+              {[
+                "A short summary and how the customer feels",
+                "Refund eligibility checked against your policy",
+                "A reply you can edit before sending",
+              ].map((text) => (
+                <li key={text} className="flex items-start gap-2 text-[13px] text-text-primary">
+                  <Sparkles size={13} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
+                  {text}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
 

@@ -48,3 +48,20 @@ export function useCreateCustomer() {
 export function useUpdateCustomer(id) {
   return useCustomerMutation((body) => api.patch(`/customers/${id}`, body));
 }
+
+// Only succeeds for a customer with no bookings or tickets (409 HAS_HISTORY
+// otherwise).
+export function useDeleteCustomer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      await api.delete(`/customers/${id}`);
+      return id;
+    },
+    onSuccess: () => {
+      // Lists only: the open profile keeps its last data while its drawer
+      // slides shut instead of flashing "not found".
+      queryClient.invalidateQueries({ queryKey: ["customers"], predicate: (query) => typeof query.queryKey[1] !== "string" });
+    },
+  });
+}
