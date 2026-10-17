@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { TourProvider } from "../context/TourContext";
 import { canViewPath } from "../lib/permissions";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { ForbiddenPage } from "../pages/errors/ForbiddenPage";
@@ -27,37 +28,39 @@ export function AppLayout() {
   const content = isAllowed ? <Outlet /> : <ForbiddenPage />;
 
   return (
-    <div className="flex h-screen bg-canvas text-text-primary">
-      <RealtimeBridge />
+    <TourProvider>
+      <div className="flex h-screen bg-canvas text-text-primary">
+        <RealtimeBridge />
 
-      <a
-        href="#main-content"
-        className="sr-only z-50 rounded-btn bg-surface px-3 py-2 text-[13px] text-text-primary focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
-      >
-        Skip to content
-      </a>
-
-      <Sidebar isOpen={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} />
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Topbar onMenuClick={() => setIsMobileNavOpen(true)} />
-
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className={clsx("flex-1 focus:outline-none", isFullWidth ? "overflow-hidden" : "overflow-y-auto")}
+        <a
+          href="#main-content"
+          className="sr-only z-50 rounded-btn bg-surface px-3 py-2 text-[13px] text-text-primary focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
         >
-          {isFullWidth ? (
-            <div key={location.pathname} className="animate-page-enter h-full">
-              {content}
-            </div>
-          ) : (
-            <div key={location.pathname} className="animate-page-enter mx-auto max-w-300 p-4 sm:p-6">
-              {content}
-            </div>
-          )}
-        </main>
+          Skip to content
+        </a>
+
+        <Sidebar isOpen={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} />
+
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <Topbar onMenuClick={() => setIsMobileNavOpen(true)} />
+
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className={clsx("flex-1 focus:outline-none", isFullWidth ? "overflow-hidden" : "overflow-y-auto")}
+          >
+            {isFullWidth ? (
+              <div key={location.pathname} className="animate-page-enter h-full">
+                {content}
+              </div>
+            ) : (
+              <div key={location.pathname} className="animate-page-enter mx-auto max-w-300 p-4 sm:p-6">
+                {content}
+              </div>
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+    </TourProvider>
   );
 }

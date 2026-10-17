@@ -41,11 +41,11 @@ export function Sidebar({ isOpen, onClose }) {
           </span>
         </div>
 
-        <div className="border-b border-border p-3 md:hidden lg:block">
+        <div className="border-b border-border p-3 md:hidden lg:block" data-tour="search">
           <SidebarSearch onNavigate={onClose} />
         </div>
 
-        <nav aria-label="Main" className="flex-1 space-y-4 overflow-y-auto p-3">
+        <nav aria-label="Main" className="flex-1 space-y-4 overflow-y-auto p-3" data-tour="nav">
           {visibleGroups.map((group) => (
             <div key={group.label}>
               <div className="mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary md:hidden lg:block">
@@ -58,6 +58,7 @@ export function Sidebar({ isOpen, onClose }) {
                     to={item.to}
                     onClick={onClose}
                     title={item.label}
+                    data-tour={`nav-${item.to}`}
                     className={({ isActive }) =>
                       clsx(
                         "flex items-center gap-2.5 rounded-btn px-2.5 py-2 text-[13px] transition-colors md:justify-center lg:justify-start",
@@ -81,6 +82,7 @@ export function Sidebar({ isOpen, onClose }) {
             type="button"
             onClick={toggleTheme}
             aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            data-tour="theme"
             className="flex w-full items-center gap-2.5 rounded-btn px-2.5 py-2 text-[13px] text-text-secondary transition-colors hover:bg-canvas hover:text-text-primary md:justify-center lg:justify-start"
           >
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}

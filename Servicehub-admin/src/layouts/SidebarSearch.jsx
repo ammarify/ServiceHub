@@ -137,7 +137,7 @@ export function SidebarSearch({ onNavigate }) {
         <div
           id={listboxId}
           role="listbox"
-          className="absolute left-0 top-full z-50 mt-1 max-h-80 w-[min(400px,calc(100vw-1.5rem))] overflow-y-auto rounded-card border border-border bg-surface p-1 shadow-card"
+          className="absolute left-0 top-full z-50 mt-1 max-h-80 w-[min(400px,calc(100vw-1.5rem))] overflow-y-auto rounded-card border border-border bg-surface p-1 shadow-pop"
         >
           {isSettling && results.length === 0 ? (
             <p className="px-3 py-2.5 text-[13px] text-text-secondary">Searching…</p>
