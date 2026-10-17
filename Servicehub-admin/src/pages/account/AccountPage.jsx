@@ -1,18 +1,58 @@
-import { LogOut } from "lucide-react";
+import clsx from "clsx";
+import { Check, Headset, Landmark, LogOut, Mail, MonitorSmartphone, Moon, Shield, Sun, UserCog } from "lucide-react";
 import { useState } from "react";
+import { PasswordStrength } from "../../components/PasswordStrength";
 import { Avatar } from "../../components/ui/Avatar";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
-import { DetailField } from "../../components/ui/DetailField";
 import { FormField } from "../../components/ui/FormField";
+import { InfoList, InfoRow } from "../../components/ui/InfoRow";
 import { Input } from "../../components/ui/Input";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import { useToast } from "../../context/ToastContext";
 import { useChangePassword, useUpdateProfile } from "../../hooks/useAccount";
 import { errorMessage, fieldErrors } from "../../lib/api";
-import { humanize } from "../../lib/formatters";
 import { validatePassword } from "../../lib/passwordRules";
+import { ROLE_OPTIONS, roleLabel } from "../settings/roles";
+
+const ROLE_ICONS = { super_admin: Shield, manager: UserCog, support_agent: Headset, finance: Landmark };
+
+function CardHeading({ title, description }) {
+  return (
+    <div>
+      <h2 className="text-[15px] font-semibold text-text-primary">{title}</h2>
+      {description && <p className="mt-1 text-[13px] text-text-secondary">{description}</p>}
+    </div>
+  );
+}
+
+// Who's signed in, at the top of the page.
+function AccountHeader() {
+  const { user } = useAuth();
+  const RoleIcon = ROLE_ICONS[user.role] ?? Shield;
+  const roleDescription = ROLE_OPTIONS.find((option) => option.value === user.role)?.description;
+
+  return (
+    <Card className="flex flex-wrap items-center gap-4">
+      <Avatar name={user.name} size={56} />
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-[20px] font-semibold text-text-primary">{user.name}</h2>
+        <div className="font-data mt-0.5 truncate text-[12px] text-text-secondary">{user.email}</div>
+      </div>
+      <div className="flex max-w-full items-center gap-3 rounded-card border border-border px-3 py-2">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-btn bg-accent/10 text-accent">
+          <RoleIcon size={15} />
+        </span>
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium text-text-primary">{roleLabel(user.role)}</div>
+          {roleDescription && <div className="truncate text-[12px] text-text-secondary">{roleDescription}</div>}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function ProfileCard() {
   const { user } = useAuth();
@@ -40,31 +80,73 @@ function ProfileCard() {
 
   return (
     <Card>
-      <div className="text-[15px] font-semibold text-text-primary">Profile</div>
-      <div className="mt-4 flex items-center gap-3">
-        <Avatar name={user.name} size={44} />
-        <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold text-text-primary">{user.name}</div>
-          <div className="font-data truncate text-[12px] text-text-secondary">{user.email}</div>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3" noValidate>
+      <CardHeading title="Profile" description="How your name appears to the team and on booking timelines." />
+      <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3" noValidate>
         <FormField label="Display name" error={error}>
           <Input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" />
         </FormField>
-        <div className="grid grid-cols-2 gap-3">
-          <DetailField label="Email" mono>
+        <InfoList>
+          <InfoRow icon={Mail} label="Email" mono>
             {user.email}
-          </DetailField>
-          <DetailField label="Role">{humanize(user.role)}</DetailField>
-        </div>
+          </InfoRow>
+          <InfoRow icon={Shield} label="Role">
+            {roleLabel(user.role)}
+          </InfoRow>
+        </InfoList>
         <div>
           <Button type="submit" variant="primary" disabled={mutation.isPending || name.trim() === user.name}>
             {mutation.isPending ? "Saving…" : "Save changes"}
           </Button>
         </div>
       </form>
+    </Card>
+  );
+}
+
+const THEME_OPTIONS = [
+  { value: "light", label: "Light", description: "Always light", icon: Sun },
+  { value: "dark", label: "Dark", description: "Always dark", icon: Moon },
+  { value: "system", label: "System", description: "Match this device", icon: MonitorSmartphone },
+];
+
+function AppearanceCard() {
+  const { preference, setTheme } = useTheme();
+
+  return (
+    <Card>
+      <CardHeading title="Appearance" description="Saved in this browser." />
+      <div role="radiogroup" aria-label="Theme" className="mt-4 grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
+        {THEME_OPTIONS.map((option) => {
+          const isSelected = preference === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              onClick={() => setTheme(option.value)}
+              className={clsx(
+                "relative flex items-center gap-2.5 rounded-card border p-3 text-left transition-colors min-[420px]:flex-col min-[420px]:items-start",
+                isSelected ? "border-accent bg-accent/5" : "border-border hover:bg-canvas"
+              )}
+            >
+              <span
+                className={clsx(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-btn",
+                  isSelected ? "bg-accent text-white" : "bg-canvas text-text-secondary"
+                )}
+              >
+                <option.icon size={15} />
+              </span>
+              <span>
+                <span className="block text-[13px] font-medium text-text-primary">{option.label}</span>
+                <span className="block text-[12px] text-text-secondary">{option.description}</span>
+              </span>
+              {isSelected && <Check size={14} className="absolute right-3 top-3 text-accent" aria-hidden="true" />}
+            </button>
+          );
+        })}
+      </div>
     </Card>
   );
 }
@@ -108,10 +190,7 @@ function PasswordCard() {
 
   return (
     <Card>
-      <div className="text-[15px] font-semibold text-text-primary">Password</div>
-      <p className="mt-1 text-[13px] text-text-secondary">
-        Changing your password signs you out on every other device.
-      </p>
+      <CardHeading title="Password" description="Changing your password signs you out on every other device." />
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3" noValidate>
         <FormField label="Current password" error={errors.currentPassword}>
           <Input
@@ -121,9 +200,12 @@ function PasswordCard() {
             onChange={update("currentPassword")}
           />
         </FormField>
-        <FormField label="New password" hint="At least 8 characters, with a letter and a number." error={errors.newPassword}>
-          <Input type="password" autoComplete="new-password" value={form.newPassword} onChange={update("newPassword")} />
-        </FormField>
+        <div className="flex flex-col gap-2">
+          <FormField label="New password" hint="At least 8 characters, with a letter and a number." error={errors.newPassword}>
+            <Input type="password" autoComplete="new-password" value={form.newPassword} onChange={update("newPassword")} />
+          </FormField>
+          <PasswordStrength password={form.newPassword} />
+        </div>
         <FormField label="Confirm new password" error={errors.confirm}>
           <Input type="password" autoComplete="new-password" value={form.confirm} onChange={update("confirm")} />
         </FormField>
@@ -156,11 +238,12 @@ function SessionsCard() {
 
   return (
     <Card>
-      <div className="text-[15px] font-semibold text-text-primary">Sessions</div>
-      <p className="mt-1 text-[13px] text-text-secondary">
-        Lost a device or signed in on a shared computer? Sign out everywhere, including this browser.
-      </p>
+      <CardHeading
+        title="Sessions"
+        description="Lost a device or signed in on a shared computer? Sign out everywhere, including this browser."
+      />
       <Button variant="secondary" tone="danger" className="mt-4" onClick={() => setIsConfirmOpen(true)}>
+        <LogOut size={14} />
         Sign out everywhere
       </Button>
 
@@ -191,9 +274,12 @@ function SessionsCard() {
 export function AccountPage() {
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-[15px] font-semibold text-text-primary">Your account</h2>
-      <div className="grid grid-cols-1 gap-4 min-[900px]:grid-cols-2">
-        <ProfileCard />
+      <AccountHeader />
+      <div className="grid grid-cols-1 items-start gap-4 min-[900px]:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <ProfileCard />
+          <AppearanceCard />
+        </div>
         <div className="flex flex-col gap-4">
           <PasswordCard />
           <SessionsCard />

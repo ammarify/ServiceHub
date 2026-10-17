@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validatePassword } from "./passwordRules";
+import { passwordStrength, validatePassword } from "./passwordRules";
 
 describe("validatePassword", () => {
   it("accepts a password with letters and numbers", () => {
@@ -13,5 +13,17 @@ describe("validatePassword", () => {
     ["12345678", "one letter and one number"],
   ])("rejects %j", (password, message) => {
     expect(validatePassword(password)).toContain(message);
+  });
+});
+
+describe("passwordStrength", () => {
+  it.each([
+    ["", null],
+    ["short1", "Too weak"],
+    ["password12", "Fair"],
+    ["Password1234", "Good"],
+    ["Correct-Horse-42", "Strong"],
+  ])("rates %j", (password, label) => {
+    expect(passwordStrength(password)?.label ?? null).toBe(label);
   });
 });

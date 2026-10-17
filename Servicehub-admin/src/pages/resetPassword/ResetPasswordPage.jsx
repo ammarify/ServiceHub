@@ -1,6 +1,7 @@
 import { ArrowLeft, CircleCheck, CircleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { PasswordStrength } from "../../components/PasswordStrength";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
@@ -130,14 +131,17 @@ export function ResetPasswordPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3" noValidate>
-          <FormField label="New password" hint="At least 8 characters, with a letter and a number." error={errors.password}>
-            <Input
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </FormField>
+          <div className="flex flex-col gap-2">
+            <FormField label="New password" hint="At least 8 characters, with a letter and a number." error={errors.password}>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </FormField>
+            <PasswordStrength password={password} />
+          </div>
           <FormField label="Confirm password" error={errors.confirm}>
             <Input
               type="password"
