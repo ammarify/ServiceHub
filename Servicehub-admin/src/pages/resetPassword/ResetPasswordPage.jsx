@@ -13,6 +13,15 @@ import { errorMessage, fieldErrors } from "../../lib/api";
 import { validatePassword } from "../../lib/passwordRules";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
 
+const BROKEN_LINK_MESSAGE = "This link is invalid or has expired. Request a new one.";
+
+// Why a link can't be used. A malformed token (cut short when it was copied,
+// say) fails the API's request validation before it is looked up; to the
+// person it's the same broken link, not a field error.
+function linkProblem(error) {
+  return fieldErrors(error).token ? BROKEN_LINK_MESSAGE : errorMessage(error);
+}
+
 // Serves both "forgot password" links and team invitations: the API tells
 // us which one the token is for.
 export function ResetPasswordPage() {
@@ -70,7 +79,7 @@ export function ResetPasswordPage() {
         <h1 className="mt-4 text-[20px] font-semibold text-text-primary">This link can't be used</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
           {verify.isError
-            ? errorMessage(verify.error)
+            ? linkProblem(verify.error)
             : "The link is incomplete. Open it again from your email, or request a new one."}
         </p>
         <Link

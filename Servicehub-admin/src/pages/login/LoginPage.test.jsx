@@ -66,7 +66,7 @@ describe("LoginPage", () => {
   it("hides demo access unless the server runs in demo mode", async () => {
     const server = setup();
     await waitFor(() => expect(server.callsTo("GET", "/config")).toHaveLength(1));
-    expect(screen.queryByRole("button", { name: /demo access/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /demo account/i })).not.toBeInTheDocument();
   });
 
   it("offers one-click demo roles in demo mode", async () => {
@@ -75,8 +75,8 @@ describe("LoginPage", () => {
       routes: { "POST /auth/demo-login": { user: testUser("finance") } },
     });
 
-    await userEvent.click(await screen.findByRole("button", { name: "Show demo access" }));
-    await userEvent.click(screen.getByRole("button", { name: "Finance" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Try a demo account/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Finance/ }));
 
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/dashboard"));
     expect(server.callsTo("POST", "/auth/demo-login")[0].body).toEqual({ role: "finance" });

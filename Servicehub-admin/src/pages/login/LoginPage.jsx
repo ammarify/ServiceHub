@@ -1,4 +1,4 @@
-import { ChevronDown, Headset, Landmark, Shield, UserCog } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, Headset, Landmark, Shield, UserCog } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
@@ -21,10 +21,10 @@ const GOOGLE_SCRIPT_POLL_MS = 150;
 const GOOGLE_BUTTON_WIDTH = "360";
 
 const DEMO_ACCOUNTS = [
-  { role: "super_admin", label: "Super Admin", icon: Shield },
-  { role: "manager", label: "Manager", icon: UserCog },
-  { role: "support_agent", label: "Support Agent", icon: Headset },
-  { role: "finance", label: "Finance", icon: Landmark },
+  { role: "super_admin", label: "Super Admin", description: "Full access", icon: Shield },
+  { role: "manager", label: "Manager", description: "Ops and support", icon: UserCog },
+  { role: "support_agent", label: "Support Agent", description: "Live chats", icon: Headset },
+  { role: "finance", label: "Finance", description: "Refund approvals", icon: Landmark },
 ];
 
 function useAfterLoginRedirect() {
@@ -50,6 +50,7 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [demoLoadingRole, setDemoLoadingRole] = useState(null);
   const [showDemoAccess, setShowDemoAccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isGoogleReady, setIsGoogleReady] = useState(false);
   const googleButtonRef = useRef(null);
   // Read inside the Google callback, which is registered once.
@@ -166,8 +167,8 @@ export function LoginPage() {
         <span className="text-[15px] font-semibold tracking-tight text-text-primary">ServiHub</span>
       </div>
 
-      <h1 className="mt-8 text-[20px] font-semibold text-text-primary">Sign in to ServiHub</h1>
-      <p className="mt-1 text-[13px] text-text-secondary">Enter your credentials to continue</p>
+      <h1 className="mt-10 text-[20px] font-semibold text-text-primary">Sign in to ServiHub</h1>
+      <p className="mt-1 text-[13px] text-text-secondary">Use your work email and password to continue.</p>
 
       {sessionNotice && (
         <div role="status" className="mt-5 flex items-start gap-2 rounded-card border border-border bg-surface px-3 py-2.5">
@@ -199,15 +200,27 @@ export function LoginPage() {
           />
         </FormField>
 
-        <FormField label="Password" error={fieldErrors.password}>
-          <Input
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </FormField>
+        <div className="relative">
+          <FormField label="Password" error={fieldErrors.password}>
+            <Input
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="pr-10"
+            />
+          </FormField>
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            className="absolute right-1 top-[27px] flex h-8 w-8 items-center justify-center rounded-btn text-text-secondary transition-colors hover:text-text-primary"
+          >
+            {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
 
         <div className="flex items-center justify-between">
           <Checkbox
@@ -232,46 +245,51 @@ export function LoginPage() {
       </form>
 
       {config.demoMode && (
-        <div className="mt-6 border-t border-border pt-4">
+        <div className="mt-6 rounded-card border border-border">
           <button
             type="button"
             onClick={() => setShowDemoAccess((prev) => !prev)}
             aria-expanded={showDemoAccess}
-            className="flex items-center gap-1 text-[12px] text-text-secondary transition-colors hover:text-text-primary"
+            aria-controls="demo-access"
+            className="flex w-full items-center justify-between gap-3 rounded-card px-3.5 py-3 text-left transition-colors hover:bg-canvas"
           >
+            <span>
+              <span className="block text-[13px] font-medium text-text-primary">Try a demo account</span>
+              <span className="block text-[12px] text-text-secondary">Explore ServiHub as any role, no password needed</span>
+            </span>
             <ChevronDown
-              size={13}
-              className={showDemoAccess ? "rotate-180 transition-transform" : "transition-transform"}
+              size={15}
+              className={showDemoAccess ? "shrink-0 rotate-180 text-text-secondary transition-transform" : "shrink-0 text-text-secondary transition-transform"}
             />
-            {showDemoAccess ? "Hide demo access" : "Show demo access"}
           </button>
 
           {showDemoAccess && (
-            <div className="mt-3 rounded-card border border-border bg-canvas p-3">
-              <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-                Demo Access
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {DEMO_ACCOUNTS.map(({ role, label, icon: Icon }) => (
-                  <Button
-                    key={role}
-                    type="button"
-                    variant="secondary"
-                    onClick={() => handleDemoLogin(role)}
-                    disabled={demoLoadingRole !== null}
-                    className="justify-center"
-                  >
+            <div id="demo-access" className="grid grid-cols-1 gap-2 border-t border-border p-3 min-[400px]:grid-cols-2">
+              {DEMO_ACCOUNTS.map(({ role, label, description, icon: Icon }) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => handleDemoLogin(role)}
+                  disabled={demoLoadingRole !== null}
+                  className="group flex items-start gap-2.5 rounded-card border border-border bg-surface p-2.5 text-left transition-colors hover:border-accent/40 hover:bg-accent/5 disabled:opacity-50"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-btn bg-accent/10 text-accent">
                     <Icon size={14} />
-                    {demoLoadingRole === role ? "Signing in…" : label}
-                  </Button>
-                ))}
-              </div>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium text-text-primary">
+                      {demoLoadingRole === role ? "Signing in…" : label}
+                    </span>
+                    <span className="block text-[11px] leading-snug text-text-secondary">{description}</span>
+                  </span>
+                </button>
+              ))}
             </div>
           )}
         </div>
       )}
 
-      <p className="mt-6 text-[12px] text-text-secondary">Internal tool — authorized staff only.</p>
+      <p className="mt-6 text-[12px] text-text-secondary">Internal tool for authorized ServiHub staff.</p>
     </AuthLayout>
   );
 }
