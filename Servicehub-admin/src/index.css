@@ -2,6 +2,13 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 
+/* Height breakpoints, for layouts that must fit the window without
+   scrolling: `short` matches laptop screens such as 1920×1080 at 125%
+   scaling (about 700px of page height) or 1366×768, `shorter` 1280×720
+   laptops and small phones. */
+@custom-variant short (@media (max-height: 760px));
+@custom-variant shorter (@media (max-height: 640px));
+
 :root {
   --color-canvas: #f7f7f8;
   --color-surface: #ffffff;

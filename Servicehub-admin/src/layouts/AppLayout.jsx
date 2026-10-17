@@ -29,7 +29,10 @@ export function AppLayout() {
 
   return (
     <TourProvider>
-      <div className="flex h-screen bg-canvas text-text-primary">
+      {/* The window never scrolls, only <main>: `relative` + overflow-hidden
+          also catch anything absolutely positioned that would otherwise
+          stretch the page past the window. */}
+      <div className="relative flex h-dvh overflow-hidden bg-canvas text-text-primary">
         <RealtimeBridge />
 
         <a

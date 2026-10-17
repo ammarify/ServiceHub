@@ -167,7 +167,7 @@ export function LoginPage() {
         <span className="text-[15px] font-semibold tracking-tight text-text-primary">ServiHub</span>
       </div>
 
-      <h1 className="mt-10 text-[20px] font-semibold text-text-primary">Sign in to ServiHub</h1>
+      <h1 className="mt-10 text-[20px] font-semibold text-text-primary short:mt-6 shorter:mt-5">Sign in to ServiHub</h1>
       <p className="mt-1 text-[13px] text-text-secondary">Use your work email and password to continue.</p>
 
       {sessionNotice && (
@@ -189,7 +189,7 @@ export function LoginPage() {
         </>
       )}
 
-      <form onSubmit={handleSubmit} className={googleClientId ? "flex flex-col gap-3" : "mt-6 flex flex-col gap-3"} noValidate>
+      <form onSubmit={handleSubmit} className={googleClientId ? "flex flex-col gap-3" : "mt-6 flex flex-col gap-3 short:mt-4"} noValidate>
         <FormField label="Email" error={fieldErrors.email}>
           <Input
             type="email"
@@ -245,7 +245,7 @@ export function LoginPage() {
       </form>
 
       {config.demoMode && (
-        <div className="mt-6 rounded-card border border-border">
+        <div className="mt-6 rounded-card border border-border short:mt-4">
           <button
             type="button"
             onClick={() => setShowDemoAccess((prev) => !prev)}
@@ -264,23 +264,23 @@ export function LoginPage() {
           </button>
 
           {showDemoAccess && (
-            <div id="demo-access" className="grid grid-cols-1 gap-2 border-t border-border p-3 min-[400px]:grid-cols-2">
+            <div id="demo-access" className="grid grid-cols-1 gap-2 border-t border-border p-3 min-[360px]:grid-cols-2">
               {DEMO_ACCOUNTS.map(({ role, label, description, icon: Icon }) => (
                 <button
                   key={role}
                   type="button"
                   onClick={() => handleDemoLogin(role)}
                   disabled={demoLoadingRole !== null}
-                  className="group flex items-start gap-2.5 rounded-card border border-border bg-surface p-2.5 text-left transition-colors hover:border-accent/40 hover:bg-accent/5 disabled:opacity-50"
+                  className="group flex items-start gap-2.5 rounded-card border border-border bg-surface p-2.5 text-left transition-colors hover:border-accent/40 hover:bg-accent/5 disabled:opacity-50 short:py-2"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-btn bg-accent/10 text-accent">
+                  <span className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-btn bg-accent/10 text-accent min-[400px]:flex">
                     <Icon size={14} />
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[13px] font-medium text-text-primary">
                       {demoLoadingRole === role ? "Signing in…" : label}
                     </span>
-                    <span className="block text-[11px] leading-snug text-text-secondary">{description}</span>
+                    <span className="block text-[11px] leading-snug text-text-secondary shorter:hidden">{description}</span>
                   </span>
                 </button>
               ))}
@@ -289,7 +289,7 @@ export function LoginPage() {
         </div>
       )}
 
-      <p className="mt-6 text-[12px] text-text-secondary">Internal tool for authorized ServiHub staff.</p>
+      <p className="mt-6 text-[12px] text-text-secondary short:mt-4 shorter:hidden">Internal tool for authorized ServiHub staff.</p>
     </AuthLayout>
   );
 }

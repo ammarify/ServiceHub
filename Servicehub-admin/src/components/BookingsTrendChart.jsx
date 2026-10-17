@@ -66,7 +66,7 @@ export function BookingsTrendChart({ data, isLoading }) {
   const lastDate = data.at(-1)?.date;
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="relative flex h-full flex-col">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold text-text-primary">
@@ -142,28 +142,33 @@ export function BookingsTrendChart({ data, isLoading }) {
             </ResponsiveContainer>
           </div>
 
-          {/* The same numbers for screen readers. */}
-          <table className="sr-only">
-            <caption>
-              {config.label} per day, last {data.length} days
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Day</th>
-                <th scope="col">Bookings</th>
-                <th scope="col">Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((day) => (
-                <tr key={day.date}>
-                  <th scope="row">{formatShortWeekdayDate(parseDateKey(day.date))}</th>
-                  <td>{day.count}</td>
-                  <td>{formatUSD(day.revenue ?? 0)}</td>
+          {/* The same numbers for screen readers. The wrapper does the hiding:
+              a table ignores the height and overflow sr-only sets, so a long
+              one (a month of days) would stretch the page and add a second
+              scrollbar. */}
+          <div className="sr-only">
+            <table>
+              <caption>
+                {config.label} per day, last {data.length} days
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Day</th>
+                  <th scope="col">Bookings</th>
+                  <th scope="col">Revenue</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.map((day) => (
+                  <tr key={day.date}>
+                    <th scope="row">{formatShortWeekdayDate(parseDateKey(day.date))}</th>
+                    <td>{day.count}</td>
+                    <td>{formatUSD(day.revenue ?? 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </Card>
