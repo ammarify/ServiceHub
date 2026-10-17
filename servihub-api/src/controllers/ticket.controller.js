@@ -17,6 +17,12 @@ const LIST_PROJECTION = {
   updatedAt: 1,
   hasAnalysis: { $ne: [{ $type: "$aiAnalysis" }, "missing"] },
   customer: { _id: "$customer._id", name: "$customer.name" },
+  // A preview for the queue, capped so a long message doesn't bloat the list.
+  lastMessage: {
+    from: "$lastMessage.from",
+    text: { $substrCP: [{ $ifNull: ["$lastMessage.text", ""] }, 0, 140] },
+    at: "$lastMessage.at",
+  },
 };
 
 const TICKET_POPULATE = [

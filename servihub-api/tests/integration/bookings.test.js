@@ -53,6 +53,17 @@ describe("listing", () => {
     const res = await finance.get("/api/bookings?service=Gardening");
     expect(res.status).toBe(400);
   });
+
+  it("returns the provider's name, or null for an unassigned booking", async () => {
+    const provider = await createProvider({ name: "Listed Provider" });
+    const assigned = await createBooking({ provider: provider._id, status: "assigned" });
+    const unassigned = await createBooking({ status: "pending" });
+
+    const res = await finance.get("/api/bookings");
+    const byId = Object.fromEntries(res.body.items.map((b) => [b._id, b]));
+    expect(byId[assigned._id.toString()].provider).toMatchObject({ name: "Listed Provider" });
+    expect(byId[unassigned._id.toString()].provider).toBeNull();
+  });
 });
 
 describe("detail", () => {

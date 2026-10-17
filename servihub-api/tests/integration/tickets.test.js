@@ -60,7 +60,19 @@ describe("agent workflow", () => {
     expect(res.body.status).toBe("in_progress");
 
     const list = await agent.get("/api/tickets?status=in_progress");
-    expect(list.body.items[0]).toMatchObject({ code: ticket.code, unanswered: false });
+    expect(list.body.items[0]).toMatchObject({
+      code: ticket.code,
+      unanswered: false,
+      lastMessage: { from: "agent", text: "Looking into it now." },
+    });
+  });
+
+  it("caps the queue's last-message preview at 140 characters", async () => {
+    const long = "x".repeat(400);
+    await createTicket({ messages: [{ from: "customer", senderName: "Customer", text: long, at: new Date() }] });
+
+    const list = await agent.get("/api/tickets");
+    expect(list.body.items[0].lastMessage).toMatchObject({ from: "customer", text: "x".repeat(140) });
   });
 
   it("updates status and priority, returning the populated ticket", async () => {
