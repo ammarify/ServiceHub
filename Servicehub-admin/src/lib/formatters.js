@@ -57,6 +57,47 @@ export function formatShortDate(date) {
   return shortDateFormatter.format(new Date(date));
 }
 
+const weekdayDateFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+});
+
+// "Friday, October 17"
+export function formatWeekdayDate(date) {
+  return weekdayDateFormatter.format(new Date(date));
+}
+
+const shortWeekdayDateFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+// "Fri, Oct 17"
+export function formatShortWeekdayDate(date) {
+  return shortWeekdayDateFormatter.format(new Date(date));
+}
+
+const monthFormatter = new Intl.DateTimeFormat("en-US", { month: "long" });
+
+// "October"
+export function formatMonth(date) {
+  return monthFormatter.format(new Date(date));
+}
+
+const compactNumberFormatter = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+
+// 1284 -> "1.3K"; small numbers stay as they are.
+export function formatCompactNumber(value) {
+  return compactNumberFormatter.format(Number(value) || 0);
+}
+
+// 4200 -> "$4.2K", 350 -> "$350"
+export function formatCompactUSD(value) {
+  return `$${compactNumberFormatter.format(Number(value) || 0)}`;
+}
+
 // "2026-10-14" (a calendar day from the API, already in the viewer's zone)
 // -> "Oct 14". Parsed as a local date: new Date("2026-10-14") would mean UTC
 // midnight and show the previous day anywhere west of Greenwich.

@@ -67,7 +67,7 @@ export function Drawer({
   return createPortal(
     <div
       className={clsx(
-        "fixed inset-0 z-50 flex bg-black/50 transition-opacity duration-180",
+        "fixed inset-0 z-50 flex bg-black/50 backdrop-blur-[2px] transition-opacity duration-180",
         isRight ? "justify-end" : "justify-start",
         isVisible ? "opacity-100" : "opacity-0",
         !open && "pointer-events-none",
@@ -83,7 +83,7 @@ export function Drawer({
         aria-label={ariaLabel ?? title}
         tabIndex={-1}
         className={clsx(
-          "flex h-full w-full flex-col bg-surface shadow-card transition-transform duration-180 ease-out focus:outline-none",
+          "flex h-full w-full flex-col bg-surface shadow-pop transition-transform duration-180 ease-out focus:outline-none",
           isRight ? "border-l border-border" : "border-r border-border",
           widthClassName,
           isVisible ? "translate-x-0" : isRight ? "translate-x-full" : "-translate-x-full",

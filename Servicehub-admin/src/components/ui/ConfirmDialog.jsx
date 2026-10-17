@@ -9,6 +9,12 @@ import { createPortal } from "react-dom";
 // Rendered into document.body through a portal: an ancestor with a CSS
 // transform (a sliding Drawer, a page-enter animation) would otherwise
 // become the containing block for this fixed overlay and squeeze it.
+const ICON_TONE_CLASSES = {
+  default: "bg-accent/10 text-accent",
+  danger: "bg-danger/10 text-danger",
+  warning: "bg-warning/10 text-warning",
+};
+
 export function ConfirmDialog({
   open,
   onClose,
@@ -17,6 +23,8 @@ export function ConfirmDialog({
   children,
   footer,
   onSubmit,
+  icon: Icon,
+  tone = "default",
   widthClassName = "max-w-md",
 }) {
   const titleId = useId();
@@ -40,7 +48,7 @@ export function ConfirmDialog({
 
   const body = (
     <>
-      <div className="mt-3 text-[13px] text-text-secondary">{children}</div>
+      {children && <div className={clsx("mt-3 text-[13px] text-text-secondary", Icon && "sm:pl-12")}>{children}</div>}
       {footer && <div className="mt-5 flex flex-wrap justify-end gap-2">{footer}</div>}
     </>
   );
@@ -52,7 +60,7 @@ export function ConfirmDialog({
 
   return createPortal(
     <div
-      className="animate-overlay-enter fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="animate-overlay-enter fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -73,12 +81,23 @@ export function ConfirmDialog({
           }
         }}
         className={clsx(
-          "animate-dialog-enter max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-card border border-border bg-surface p-5 shadow-card focus:outline-none",
+          "animate-dialog-enter max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-card border border-border bg-surface p-5 shadow-pop focus:outline-none",
           widthClassName
         )}
       >
         <div className="flex items-start justify-between gap-3">
-          <div>
+          {Icon && (
+            <span
+              className={clsx(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                ICON_TONE_CLASSES[tone] ?? ICON_TONE_CLASSES.default
+              )}
+              aria-hidden="true"
+            >
+              <Icon size={17} />
+            </span>
+          )}
+          <div className={clsx("min-w-0 flex-1", Icon && "pt-1.5")}>
             <h2 id={titleId} className="text-[15px] font-semibold text-text-primary">
               {title}
             </h2>
