@@ -75,11 +75,19 @@ previous/next icons, rows per page); every destructive or state-changing
 action asks for confirmation and reports its result in a toast; providers,
 customers and pending invitations can be deleted when they have no history;
 a skippable, role-aware guided tour runs after the first sign-in; and the
-support conversation and customer simulator became a modern chat. Checked
-with API tests (323), app tests (88), lint and build, `audit:rbac` (38
-endpoints × 4 roles + anonymous), `e2e` (36 steps pass), and a browser walk
-through every screen, dialog and role at desktop, tablet and phone widths in
-light and dark mode.
+support conversation and customer simulator became a modern chat.
+
+A second round the same day fixed two scrolling problems reported on a
+1920×1080 laptop at 125% scaling (the dashboard's This Month view added a
+second scrollbar; the sign-in pages scrolled) and added a command palette
+(Ctrl/Cmd + K), live counts in the sidebar, a progress tracker and activity
+feed on bookings, richer refund/provider/customer drawers, appearance
+settings (light, dark, system) and a password strength meter on the
+account page, and redesigned error pages. Checked with API tests (323), app
+tests (103), lint and build at every commit, `audit:rbac` (38 endpoints × 4
+roles + anonymous), `e2e` (36 steps pass), and a browser walk through every
+screen, dialog and role at desktop (including 1536×702), tablet and phone
+widths in light and dark mode.
 
 What remains is outside development: deploying it and the scale-out and
 hardening items in §14.
@@ -397,7 +405,8 @@ Drawers and selections are deep-linkable: `/customers?customer=<id>`,
   notifications and toasts; **NotificationContext** keeps the bell's list per
   user in localStorage; **ToastContext** shows action results;
   **ConfirmContext** (`useConfirm()`) is the one confirmation dialog for
-  destructive actions; **TourContext** runs the guided tour.
+  destructive actions; **TourContext** runs the guided tour;
+  **CommandPaletteContext** owns Ctrl/Cmd + K and the palette.
 - **Data** goes through TanStack Query hooks in `hooks/` with structured keys
   (`["bookings", "list", params]`, `["bookings", "detail", id]`, ...);
   mutations invalidate the queries they affect.
@@ -412,8 +421,10 @@ Drawers and selections are deep-linkable: `/customers?customer=<id>`,
 - **Sign-in and account:** a product panel beside the sign-in form (form on
   the right), email/password with show/hide and "Keep me logged in", Google
   for existing staff, demo accounts per role, forgot/reset password by email
-  link, profile name, change password, sign out everywhere, silent session
-  refresh, clear notices when a session ends.
+  link, profile name, change password (with a strength meter), light /
+  dark / system appearance, sign out everywhere, silent session refresh,
+  clear notices when a session ends. The sign-in pages always fit the
+  window.
 - **Guided tour:** after the first sign-in in a browser, a short spotlight
   tour of what the role can do (welcome, navigation, search, the role's
   pages, notifications, period picker, profile menu). Skippable at any step
@@ -437,10 +448,12 @@ Drawers and selections are deep-linkable: `/customers?customer=<id>`,
   confirms its result in a toast (with a dismiss button and a countdown
   that pauses on hover).
 - **Bookings:** server-side search, status tabs, service filter, sort,
-  pagination; new booking (also from a customer's profile); detail page with
-  timeline, customer, provider and payment cards; edit, mark started, mark
-  completed, reassign, cancel with a reason, request refund. Bookings are
-  cancelled, never deleted.
+  pagination; new booking (also from a customer's profile or the command
+  palette); detail page with a summary card, a progress tracker (booked,
+  assigned, in progress, completed, or where it was cancelled), an
+  activity feed, customer, provider and payment cards (refund breakdown);
+  edit, mark started, mark completed, reassign, cancel with a reason,
+  request refund. Bookings are cancelled, never deleted.
 - **Providers / customers:** searchable directories, profile drawers with
   stats and history, add and edit, and delete for records with no history
   (otherwise the profile explains why not and what to do instead).
@@ -455,15 +468,20 @@ Drawers and selections are deep-linkable: `/customers?customer=<id>`,
   composer", role- and state-aware actions (request refund prefilled,
   reassign, escalate).
 - **Refunds:** Pending / Approved / Rejected tabs with counts, new refund
-  request with the refundable balance shown, detail drawer, approve/reject
+  request with the refundable balance shown, a drawer with the share of the
+  booking, the linked job and the request/decision history, approve/reject
   with an optional note, live updates.
 - **Settings → Team:** roster with last sign-in and pending invites, add
   member (invitation link, emailed when configured), resend or withdraw an
   invitation, change role, enable/disable (with confirmation).
 - **Notifications:** bell with unread count for new tickets, customer
   replies, refund requests (approvers) and decisions (requester).
-- **Global search:** Ctrl/Cmd + K, bookings / customers / tickets, keyboard
-  navigation, opens the exact record.
+- **Command palette:** Ctrl/Cmd + K from anywhere: jump to any page the
+  role can open, run quick actions (new booking, request a refund, theme,
+  tour), or find bookings / customers / tickets by ID, name or phone;
+  keyboard navigation, opens the exact record.
+- **Sidebar counts:** open tickets beside Support and refunds waiting for a
+  decision beside Refunds, kept live.
 - **Customer simulator:** a customer-style chat widget (clearly labelled as
   a demo): pick a customer, resume an open ticket or start one on a booking,
   live chat with typing, light and dark.
@@ -583,6 +601,14 @@ files, set `MONGODB_URI` and two JWT secrets, `npm install` in both apps,
   open in a layer above the page and flip upwards near the bottom.
 - On phones the Settings "Add member" button wrapped onto two lines; the
   header now stacks.
+- Reported on a 1920×1080 laptop at 125% scaling: the dashboard's This
+  Month view showed a second scrollbar and let the sidebar scroll away.
+  The trend chart's screen-reader table had `sr-only` on the `<table>`,
+  which a table ignores, so 30 rows stretched the page. It is now wrapped
+  in a hidden div, and the app shell can no longer grow past the window.
+- Same report: the sign-in, forgot and reset pages scrolled on screens
+  around 700px tall. They now fit (spacing adapts to the height and the
+  preview scales), down to 1280×610 and on phones.
 
 ---
 
