@@ -13,6 +13,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { useAuth } from "../../context/AuthContext";
 import { formatDate, formatUSD, formatTime } from "../../lib/formatters";
 import { can } from "../../lib/permissions";
+import { useQueryParamState } from "../../lib/useQueryParamState";
 import { BookingFormDialog } from "./BookingFormDialog";
 import { BookingsToolbar } from "./BookingsToolbar";
 import { useBookingsList } from "./useBookingsList";
@@ -77,7 +78,15 @@ export function BookingsPage() {
   const { user } = useAuth();
   const list = useBookingsList();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // ?new=1 opens the form too (the command palette's "New booking").
+  const [newParam, setNewParam] = useQueryParamState("new");
   const canCreate = can(user, "booking.create");
+  const isFormOpen = isCreateOpen || newParam === "1";
+
+  function closeForm() {
+    setIsCreateOpen(false);
+    if (newParam) setNewParam(null, { replace: true });
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -153,8 +162,8 @@ export function BookingsPage() {
 
       {canCreate && (
         <BookingFormDialog
-          open={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
+          open={isFormOpen}
+          onClose={closeForm}
           onSaved={(booking) => navigate(`/bookings/${booking._id}`)}
         />
       )}

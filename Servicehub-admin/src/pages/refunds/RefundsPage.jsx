@@ -93,6 +93,8 @@ export function RefundsPage() {
   const [selectedRefundId, setSelectedRefundId] = useQueryParamState("refund");
   const [drawerRefundId, setDrawerRefundId] = useState(selectedRefundId);
   const [isRequestOpen, setIsRequestOpen] = useState(false);
+  // ?new=1 opens the request form too (the command palette's "Request a refund").
+  const [newParam, setNewParam] = useQueryParamState("new");
 
   if (selectedRefundId && selectedRefundId !== drawerRefundId) {
     setDrawerRefundId(selectedRefundId);
@@ -173,8 +175,11 @@ export function RefundsPage() {
       />
 
       <RequestRefundDialog
-        open={isRequestOpen}
-        onClose={() => setIsRequestOpen(false)}
+        open={isRequestOpen || newParam === "1"}
+        onClose={() => {
+          setIsRequestOpen(false);
+          if (newParam) setNewParam(null, { replace: true });
+        }}
         onCreated={(refund) => {
           list.setActiveTab("pending");
           list.setPulseRefundId(refund._id);
