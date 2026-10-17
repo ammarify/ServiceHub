@@ -1,18 +1,30 @@
-import { FileQuestion } from "lucide-react";
+import { FileQuestion, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
+import { useCommandPalette } from "../../context/CommandPaletteContext";
+import { ErrorState } from "./ErrorState";
 
 export function NotFoundPage() {
   const navigate = useNavigate();
+  const { openPalette } = useCommandPalette();
 
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-      <FileQuestion size={28} className="text-text-secondary" />
-      <h1 className="text-[20px] font-semibold text-text-primary">Page not found</h1>
-      <p className="text-[13px] text-text-secondary">The page you're looking for doesn't exist or has moved.</p>
-      <Button variant="primary" className="mt-2" onClick={() => navigate("/dashboard")}>
-        Back to Dashboard
-      </Button>
-    </div>
+    <ErrorState
+      icon={FileQuestion}
+      code="Error 404"
+      title="Page not found"
+      description="This page doesn't exist or has moved. If you followed a link to a booking or a ticket, search for it instead."
+      actions={
+        <>
+          <Button variant="secondary" onClick={openPalette}>
+            <Search size={14} />
+            Search
+          </Button>
+          <Button variant="primary" onClick={() => navigate("/dashboard")}>
+            Back to Dashboard
+          </Button>
+        </>
+      }
+    />
   );
 }

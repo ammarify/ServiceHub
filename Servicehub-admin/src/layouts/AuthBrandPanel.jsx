@@ -21,7 +21,7 @@ const MIN_PREVIEW_SCALE = 0.55;
 function ProductPreview() {
   return (
     <div aria-hidden="true" className="relative select-none" style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }}>
-      <div className="absolute left-0 top-0 w-[320px] rounded-card border border-border bg-surface p-4 shadow-pop">
+      <div className="animate-preview-enter absolute left-0 top-0 w-[320px] rounded-card border border-border bg-surface p-4 shadow-pop" style={{ animationDelay: "80ms" }}>
         <div className="flex items-center justify-between gap-3">
           <span className="truncate text-[13px] font-semibold text-text-primary">Cleaner cancelled twice</span>
           <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-success">
@@ -42,7 +42,7 @@ function ProductPreview() {
         </div>
       </div>
 
-      <div className="absolute right-0 top-[138px] w-[250px] rounded-card border border-border bg-surface p-4 shadow-pop">
+      <div className="animate-preview-enter absolute right-0 top-[138px] w-[250px] rounded-card border border-border bg-surface p-4 shadow-pop" style={{ animationDelay: "260ms" }}>
         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-accent">
           <Sparkles size={12} />
           AI Copilot
@@ -57,7 +57,7 @@ function ProductPreview() {
         </div>
       </div>
 
-      <div className="absolute left-6 top-[246px] w-[290px] rounded-card border border-border bg-surface p-4 shadow-pop">
+      <div className="animate-preview-enter absolute left-6 top-[246px] w-[290px] rounded-card border border-border bg-surface p-4 shadow-pop" style={{ animationDelay: "440ms" }}>
         <div className="flex items-center justify-between">
           <span className="font-data text-[12px] text-text-secondary">BK-4853</span>
           <StatusBadge status="assigned" />

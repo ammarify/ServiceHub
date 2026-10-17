@@ -36,6 +36,9 @@ export const SearchSelect = forwardRef(function SearchSelect(
     setIsOpen(false);
   }
 
+  // The list opens on a click, on typing or with ↓, not on focus alone: a
+  // dialog that focuses this field first shouldn't open with suggestions
+  // covering the rest of its form.
   function handleKeyDown(event) {
     if (event.key === "Escape") {
       if (isOpen) {
@@ -111,7 +114,7 @@ export const SearchSelect = forwardRef(function SearchSelect(
             setActiveIndex(0);
             setIsOpen(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onClick={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           className="w-full bg-transparent text-[13px] text-text-primary placeholder:text-text-secondary focus:outline-none"
         />
